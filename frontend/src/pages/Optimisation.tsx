@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useEffect, type FormEvent } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getVehicules } from '../api/vehicules';
 import { getCommandes } from '../api/commandes';
-import { lancerOptimisation } from '../api/optimisation';
+import { lancerOptimisation, getOptimisationHistory } from '../api/optimisation';
 import { useOptimisationPolling } from '../hooks/useOptimisationPolling';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
+import { formatDateTime } from '../utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function Optimisation() {
+  const queryClient = useQueryClient();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedVehicules, setSelectedVehicules] = useState<number[]>([]);
   const [selectedCommandes, setSelectedCommandes] = useState<number[]>([]);
@@ -28,6 +31,18 @@ export default function Optimisation() {
 
   const cwPolling = useOptimisationPolling(tacheIdCW);
   const orPolling = useOptimisationPolling(tacheIdOR);
+
+  const { data: history, isLoading: loadingHistory } = useQuery({
+    queryKey: ['optimisation-history'],
+    queryFn: getOptimisationHistory,
+  });
+
+  // Refresh history when a run completes
+  useEffect(() => {
+    if (cwPolling.isComplete || orPolling.isComplete) {
+      queryClient.invalidateQueries({ queryKey: ['optimisation-history'] });
+    }
+  }, [cwPolling.isComplete, orPolling.isComplete, queryClient]);
 
   const launchMutation = useMutation({
     mutationFn: lancerOptimisation,
@@ -225,6 +240,57 @@ export default function Optimisation() {
           )}
         </div>
       )}
+
+      {/* History */}
+      <div className="mt-8 rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-200 px-5 py-4">
+          <h2 className="font-semibold text-gray-900">Historique des optimisations</h2>
+        </div>
+        {loadingHistory ? (
+          <div className="p-5"><LoadingSkeleton rows={4} /></div>
+        ) : history && history.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Algorithme</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Statut</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Distance</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Véhicules</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Non servies</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Lancée le</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {history.map((h) => (
+                  <tr key={h.id}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{h.id}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{h.date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{h.algorithme}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge statut={h.statut === 'TERMINÉE' ? 'LIVRÉE' : h.statut === 'EN_COURS' ? 'EN_COURS' : 'HORS_SERVICE'} />
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-700">
+                      {h.distance_totale ? `${h.distance_totale.toFixed(1)} km` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-700">
+                      {h.vehicules_utilises ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-700">
+                      {h.commandes_non_servies_count ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{formatDateTime(h.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="px-5 py-8 text-center text-sm text-gray-500">Aucune optimisation précédente</p>
+        )}
+      </div>
     </div>
   );
 }

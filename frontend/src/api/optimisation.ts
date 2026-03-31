@@ -32,6 +32,17 @@ export interface OptimisationResult {
   }[];
 }
 
+export interface TacheOptimisation {
+  id: string;
+  algorithme: string;
+  date: string;
+  statut: 'EN_COURS' | 'TERMINÉE' | 'ERREUR';
+  created_at: string;
+  distance_totale?: number;
+  vehicules_utilises?: number;
+  commandes_non_servies_count?: number;
+}
+
 export async function lancerOptimisation(
   payload: OptimisationLaunchPayload
 ): Promise<OptimisationLaunchResponse> {
@@ -53,5 +64,11 @@ export async function getOptimisationResult(
 ): Promise<OptimisationResult> {
   if (USE_MOCK) return mockApi.getOptimisationResult();
   const { data } = await client.get(`/optimisation/${id}/result`);
+  return data;
+}
+
+export async function getOptimisationHistory(): Promise<TacheOptimisation[]> {
+  if (USE_MOCK) return mockApi.getOptimisationHistory();
+  const { data } = await client.get('/optimisation/history');
   return data;
 }

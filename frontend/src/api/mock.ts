@@ -5,7 +5,7 @@ import type { Chauffeur } from './chauffeurs';
 import type { Anomalie } from './anomalies';
 import type { OtdData, UtilisationData, CoutParKmData, NonServiesData } from './kpis';
 import type { User } from './admin';
-import type { OptimisationResult, OptimisationStatut } from './optimisation';
+import type { OptimisationResult, OptimisationStatut, TacheOptimisation } from './optimisation';
 
 // --- Commandes ---
 const commandes: Commande[] = [
@@ -210,6 +210,14 @@ const mockOptResult: OptimisationResult = {
   ],
 };
 
+// --- Optimisation history ---
+const optimisationHistory: TacheOptimisation[] = [
+  { id: 'opt-hist-001', algorithme: 'clarke-wright', date: '2026-03-25', statut: 'TERMINÉE', created_at: '2026-03-25T08:15:00Z', distance_totale: 2850.3, vehicules_utilises: 3, commandes_non_servies_count: 2 },
+  { id: 'opt-hist-002', algorithme: 'or-tools', date: '2026-03-25', statut: 'TERMINÉE', created_at: '2026-03-25T08:18:00Z', distance_totale: 2640.1, vehicules_utilises: 3, commandes_non_servies_count: 1 },
+  { id: 'opt-hist-003', algorithme: 'clarke-wright', date: '2026-03-26', statut: 'TERMINÉE', created_at: '2026-03-26T07:45:00Z', distance_totale: 2701.6, vehicules_utilises: 3, commandes_non_servies_count: 1 },
+  { id: 'opt-hist-004', algorithme: 'or-tools', date: '2026-03-26', statut: 'TERMINÉE', created_at: '2026-03-26T07:50:00Z', distance_totale: 2580.9, vehicules_utilises: 2, commandes_non_servies_count: 1 },
+];
+
 // --- Delay helper ---
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -311,7 +319,11 @@ export const mockApi = {
     await delay(200);
     const t = tournees.find((t) => t.id === id);
     if (!t) throw new Error('Not found');
-    return t;
+    // Merge standalone anomalies for this tournée
+    const relatedAnomalies = anomalies
+      .filter((a) => a.tournee_id === id)
+      .map((a) => ({ id: a.id, type: a.type, description: a.description }));
+    return { ...t, anomalies: relatedAnomalies.length > 0 ? relatedAnomalies : t.anomalies };
   },
 
   getMaTournee: async (): Promise<Tournee | null> => {
@@ -355,21 +367,42 @@ export const mockApi = {
   lancerOptimisation: async (): Promise<{ tache_id: string }> => {
     await delay(500);
     optimisationCallCount++;
-    return { tache_id: `opt-${String(optimisationCallCount).padStart(3, '0')}` };
+    const tacheId = `opt-${String(optimisationCallCount).padStart(3, '0')}`;
+    // Record in history
+    optimisationHistory.unshift({
+      id: tacheId,
+      algorithme: mockOptResult.algorithme,
+      date: new Date().toISOString().split('T')[0],
+      statut: 'EN_COURS',
+      created_at: new Date().toISOString(),
+    });
+    return { tache_id: tacheId };
   },
 
   getOptimisationStatut: async (id: string): Promise<OptimisationStatut> => {
     await delay(200);
-    // Simulate: first 2 polls return EN_COURS, then TERMINÉE
     const num = parseInt(id.split('-')[1]);
     const elapsed = Date.now() - (num * 1000);
     if (elapsed < 6000) return { statut: 'EN_COURS', progression: Math.min(90, elapsed / 100) };
+    // Mark as TERMINÉE in history
+    const hist = optimisationHistory.find((h) => h.id === id);
+    if (hist && hist.statut === 'EN_COURS') {
+      hist.statut = 'TERMINÉE';
+      hist.distance_totale = mockOptResult.distance_totale;
+      hist.vehicules_utilises = mockOptResult.vehicules_utilises;
+      hist.commandes_non_servies_count = mockOptResult.commandes_non_servies.length;
+    }
     return { statut: 'TERMINÉE', progression: 100 };
   },
 
   getOptimisationResult: async (): Promise<OptimisationResult> => {
     await delay(300);
     return mockOptResult;
+  },
+
+  getOptimisationHistory: async (): Promise<TacheOptimisation[]> => {
+    await delay(200);
+    return optimisationHistory;
   },
 
   // Véhicules
