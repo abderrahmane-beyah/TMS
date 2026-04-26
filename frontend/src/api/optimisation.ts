@@ -9,9 +9,11 @@ export interface OptimisationResult {
   id: number;
   algorithme: string;
   distance_totale: number;
-  vehicules_utilises: number;
+  nb_vehicules_utilises: number;
   nb_commandes_non_servies: number;
   resultat_json: any;
+  tournees?: any[];
+  commandes_non_servies?: any[];
 }
 
 export const lancerOptimisation = async (data: {

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, commandes, vehicules, chauffeurs, tournees, anomalies, kpis, admin
+from app.routers import optimisation
 from app.models import *
 
 app = FastAPI(title="TMS API", version="1.0.0")
@@ -21,6 +22,7 @@ app.include_router(tournees.router)
 app.include_router(anomalies.router)
 app.include_router(kpis.router)
 app.include_router(admin.router)
+app.include_router(optimisation.router)
 
 @app.get("/")
 async def root():

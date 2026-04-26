@@ -68,7 +68,7 @@ export default function Optimisation() {
       date,
       vehicule_ids: selectedVehicules,
       commande_ids: selectedCommandes,
-      algorithme,
+      algorithme: algorithme.toUpperCase().replace('-', '_') as 'CLARKE_WRIGHT' | 'OR_TOOLS',
     });
   };
 
@@ -153,7 +153,7 @@ export default function Optimisation() {
             <LoadingSkeleton rows={2} />
           ) : (
             <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200">
-              {commandes?.items.map((c) => (
+              {commandes?.map((c) => (
                 <label
                   key={c.id}
                   className="flex cursor-pointer items-center gap-3 border-b border-gray-100 px-3 py-2 hover:bg-gray-50 last:border-0"
@@ -226,13 +226,13 @@ export default function Optimisation() {
                   </tr>
                   <tr className="border-b">
                     <td className="py-2 text-gray-700">Véhicules utilisés</td>
-                    <td className="py-2 text-right font-medium">{cwPolling.result.vehicules_utilises}</td>
-                    <td className="py-2 text-right font-medium">{orPolling.result.vehicules_utilises}</td>
+                    <td className="py-2 text-right font-medium">{cwPolling.result.nb_vehicules_utilises}</td>
+                    <td className="py-2 text-right font-medium">{orPolling.result.nb_vehicules_utilises}</td>
                   </tr>
                   <tr>
                     <td className="py-2 text-gray-700">Commandes non servies</td>
-                    <td className="py-2 text-right font-medium">{cwPolling.result.commandes_non_servies.length}</td>
-                    <td className="py-2 text-right font-medium">{orPolling.result.commandes_non_servies.length}</td>
+                    <td className="py-2 text-right font-medium">{cwPolling.result.nb_commandes_non_servies}</td>
+                    <td className="py-2 text-right font-medium">{orPolling.result.nb_commandes_non_servies}</td>
                   </tr>
                 </tbody>
               </table>
@@ -267,7 +267,7 @@ export default function Optimisation() {
                 {history.map((h) => (
                   <tr key={h.id}>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{h.id}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{h.date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{h.date_execution ? formatDateTime(h.date_execution) : '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{h.algorithme}</td>
                     <td className="px-4 py-3">
                       <StatusBadge statut={h.statut === 'TERMINÉE' ? 'LIVRÉE' : h.statut === 'EN_COURS' ? 'EN_COURS' : 'HORS_SERVICE'} />
@@ -276,10 +276,10 @@ export default function Optimisation() {
                       {h.distance_totale ? `${h.distance_totale.toFixed(1)} km` : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-gray-700">
-                      {h.vehicules_utilises ?? '—'}
+                      {h.nb_vehicules_utilises ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-gray-700">
-                      {h.commandes_non_servies_count ?? '—'}
+                      {h.nb_commandes_non_servies ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{formatDateTime(h.created_at)}</td>
                   </tr>
@@ -307,28 +307,30 @@ function ResultPanel({ title, result }: { title: string; result: NonNullable<Ret
         </div>
         <div className="rounded-lg bg-green-50 p-3 text-center">
           <p className="text-xs text-green-600">Véhicules</p>
-          <p className="text-lg font-bold text-green-900">{result.vehicules_utilises}</p>
+          <p className="text-lg font-bold text-green-900">{result.nb_vehicules_utilises}</p>
         </div>
         <div className="rounded-lg bg-red-50 p-3 text-center">
           <p className="text-xs text-red-600">Non servies</p>
-          <p className="text-lg font-bold text-red-900">{result.commandes_non_servies.length}</p>
+          <p className="text-lg font-bold text-red-900">{result.commandes_non_servies?.length ?? result.nb_commandes_non_servies}</p>
         </div>
       </div>
 
       {/* Tournees breakdown */}
-      <div className="space-y-2">
-        {result.tournees.map((t, i) => (
-          <div key={i} className="rounded-lg border border-gray-100 p-3 text-sm">
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-900">{t.vehicule_immatriculation}</span>
-              <span className="text-gray-500">{t.distance.toFixed(1)} km — {t.stops.length} arrêts</span>
+      {result.tournees && result.tournees.length > 0 && (
+        <div className="space-y-2">
+          {result.tournees.map((t, i) => (
+            <div key={i} className="rounded-lg border border-gray-100 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-900">{t.vehicule_immatriculation}</span>
+                <span className="text-gray-500">{t.distance?.toFixed(1)} km — {t.stops?.length ?? 0} arrêts</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Unserved orders */}
-      {result.commandes_non_servies.length > 0 && (
+      {result.commandes_non_servies && result.commandes_non_servies.length > 0 && (
         <div className="mt-4">
           <h4 className="mb-2 text-xs font-medium uppercase text-red-600">Non servies</h4>
           {result.commandes_non_servies.map((c) => (

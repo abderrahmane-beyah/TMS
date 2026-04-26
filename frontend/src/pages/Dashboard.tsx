@@ -49,8 +49,8 @@ export default function Dashboard() {
         date: new Date().toISOString().split('T')[0],
         vehicule_ids: vehicules?.filter((v) => v.statut === 'DISPONIBLE').map((v) => v.id) || [],
         commande_ids:
-          commandes?.items.filter((c) => c.statut === 'EN_ATTENTE').map((c) => c.id) || [],
-        algorithme: 'clarke-wright',
+          commandes?.filter((c) => c.statut === 'EN_ATTENTE').map((c) => c.id) || [],
+        algorithme: 'CLARKE_WRIGHT',
       }),
     onSuccess: (data) => {
       setTacheId(data.tache_id);
@@ -79,7 +79,7 @@ export default function Dashboard() {
     }
   });
 
-  const totalCommandes = commandes?.total ?? 0;
+  const totalCommandes = commandes?.length ?? 0;
   const tourneesActives = tournees?.filter((t) => t.statut === 'EN_COURS').length ?? 0;
   const vehiculesDisponibles = vehicules?.filter((v) => v.statut === 'DISPONIBLE').length ?? 0;
   const latestOtd = otdData && otdData.length > 0 ? otdData[otdData.length - 1].taux : 0;
@@ -164,7 +164,7 @@ export default function Dashboard() {
           <h3 className="font-medium text-green-800">Optimisation terminée</h3>
           <p className="text-sm text-green-700">
             Distance totale : {optimResult.distance_totale.toFixed(1)} km — Véhicules utilisés :{' '}
-            {optimResult.vehicules_utilises} — Non servies : {optimResult.commandes_non_servies.length}
+            {optimResult.nb_vehicules_utilises} — Non servies : {optimResult.nb_commandes_non_servies}
           </p>
         </div>
       )}
@@ -188,14 +188,14 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {commandes?.items.slice(0, 8).map((c) => (
+                  {commandes?.slice(0, 8).map((c) => (
                     <tr
                       key={c.id}
                       onClick={() => navigate(`/commandes/${c.id}`)}
                       className="cursor-pointer hover:bg-gray-50"
                     >
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">#{c.id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{c.expediteur}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{c.expediteur_id}</td>
                       <td className="px-4 py-3"><StatusBadge statut={c.statut} /></td>
                     </tr>
                   ))}
