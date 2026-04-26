@@ -14,7 +14,7 @@ export default function Optimisation() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedVehicules, setSelectedVehicules] = useState<number[]>([]);
   const [selectedCommandes, setSelectedCommandes] = useState<number[]>([]);
-  const [algorithme, setAlgorithme] = useState<'clarke-wright' | 'or-tools'>('clarke-wright');
+  const [algorithme, setAlgorithme] = useState<'heuristique' | 'or-tools'>('heuristique');
 
   const [tacheIdCW, setTacheIdCW] = useState<string | null>(null);
   const [tacheIdOR, setTacheIdOR] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function Optimisation() {
   const launchMutation = useMutation({
     mutationFn: lancerOptimisation,
     onSuccess: (data) => {
-      if (algorithme === 'clarke-wright') setTacheIdCW(data.tache_id);
+      if (algorithme === 'heuristique') setTacheIdCW(data.tache_id);
       else setTacheIdOR(data.tache_id);
       toast.success(`Optimisation ${algorithme} lancée`);
     },
@@ -68,7 +68,7 @@ export default function Optimisation() {
       date,
       vehicule_ids: selectedVehicules,
       commande_ids: selectedCommandes,
-      algorithme: algorithme.toUpperCase().replace('-', '_') as 'CLARKE_WRIGHT' | 'OR_TOOLS',
+      algorithme: algorithme.toUpperCase().replace('-', '_') as 'HEURISTIQUE' | 'OR_TOOLS',
     });
   };
 
@@ -106,10 +106,10 @@ export default function Optimisation() {
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Algorithme</label>
             <select
               value={algorithme}
-              onChange={(e) => setAlgorithme(e.target.value as 'clarke-wright' | 'or-tools')}
+              onChange={(e) => setAlgorithme(e.target.value as 'heuristique' | 'or-tools')}
               className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="clarke-wright">Clarke-Wright</option>
+              <option value="heuristique">Heuristique</option>
               <option value="or-tools">OR-Tools</option>
             </select>
           </div>
@@ -199,7 +199,7 @@ export default function Optimisation() {
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {cwPolling.result && (
-              <ResultPanel title="Clarke-Wright" result={cwPolling.result} />
+              <ResultPanel title="Heuristique" result={cwPolling.result} />
             )}
             {orPolling.result && (
               <ResultPanel title="OR-Tools" result={orPolling.result} />
@@ -214,7 +214,7 @@ export default function Optimisation() {
                 <thead>
                   <tr className="border-b">
                     <th className="py-2 text-left text-gray-500">Métrique</th>
-                    <th className="py-2 text-right text-gray-500">Clarke-Wright</th>
+                    <th className="py-2 text-right text-gray-500">Heuristique</th>
                     <th className="py-2 text-right text-gray-500">OR-Tools</th>
                   </tr>
                 </thead>

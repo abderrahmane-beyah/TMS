@@ -17,7 +17,7 @@ export interface OptimisationResult {
 }
 
 export const lancerOptimisation = async (data: {
-  algorithme: "CLARKE_WRIGHT" | "OR_TOOLS";
+  algorithme: "HEURISTIQUE" | "OR_TOOLS";
   commande_ids: number[];
   vehicule_ids: number[];
 }) => {

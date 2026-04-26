@@ -50,7 +50,7 @@ export default function Dashboard() {
         vehicule_ids: vehicules?.filter((v) => v.statut === 'DISPONIBLE').map((v) => v.id) || [],
         commande_ids:
           commandes?.filter((c) => c.statut === 'EN_ATTENTE').map((c) => c.id) || [],
-        algorithme: 'CLARKE_WRIGHT',
+        algorithme: 'HEURISTIQUE',
       }),
     onSuccess: (data) => {
       setTacheId(data.tache_id);

@@ -43,7 +43,7 @@ class StatutAnomalieEnum(str, enum.Enum):
     RESOLUE = "RESOLUE"
 
 class AlgorithmeEnum(str, enum.Enum):
-    CLARKE_WRIGHT = "CLARKE_WRIGHT"
+    HEURISTIQUE = "HEURISTIQUE"
     OR_TOOLS = "OR_TOOLS"
 
 class StatutTacheEnum(str, enum.Enum):
