@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SAEnu
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.database import Base
-from app.models.enums import RoleEnum
+from app.models.enums import RoleEnum, StatutChauffeurEnum
 
 class Utilisateur(Base):
     __tablename__ = "utilisateurs"
@@ -14,6 +14,7 @@ class Utilisateur(Base):
     telephone     = Column(String, nullable=True)
     role          = Column(SAEnum(RoleEnum), nullable=False)
     actif         = Column(Boolean, default=True)
+    statut        = Column(SAEnum(StatutChauffeurEnum), nullable=True)
     created_at    = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships

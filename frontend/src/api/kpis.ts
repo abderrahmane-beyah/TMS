@@ -1,47 +1,21 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
+import client from "./client";
 
-export interface OtdData {
-  date: string;
-  taux: number;
-}
+export const getOtd = async () => {
+  const response = await client.get("/kpis/otd");
+  return response.data;
+};
 
-export interface UtilisationData {
-  vehicule: string;
-  taux: number;
-}
+export const getUtilisation = async () => {
+  const response = await client.get("/kpis/utilisation");
+  return response.data;
+};
 
-export interface CoutParKmData {
-  date: string;
-  cout: number;
-}
+export const getCoutParKm = async () => {
+  const response = await client.get("/kpis/cout-par-km");
+  return response.data;
+};
 
-export interface NonServiesData {
-  date: string;
-  count: number;
-}
-
-export async function getOtd(): Promise<OtdData[]> {
-  if (USE_MOCK) return mockApi.getOtd();
-  const { data } = await client.get('/kpis/otd');
-  return data;
-}
-
-export async function getUtilisation(): Promise<UtilisationData[]> {
-  if (USE_MOCK) return mockApi.getUtilisation();
-  const { data } = await client.get('/kpis/utilisation');
-  return data;
-}
-
-export async function getCoutParKm(): Promise<CoutParKmData[]> {
-  if (USE_MOCK) return mockApi.getCoutParKm();
-  const { data } = await client.get('/kpis/cout-par-km');
-  return data;
-}
-
-export async function getNonServies(): Promise<NonServiesData[]> {
-  if (USE_MOCK) return mockApi.getNonServies();
-  const { data } = await client.get('/kpis/non-servies');
-  return data;
-}
+export const getNonServies = async () => {
+  const response = await client.get("/kpis/non-servies");
+  return response.data;
+};

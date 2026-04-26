@@ -1,28 +1,8 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
+import client from "./client";
 
 export interface Commande {
   id: number;
-  expediteur: string;
-  adresse_enlevement: string;
-  adresse_livraison: string;
-  lat_enlevement?: number;
-  lon_enlevement?: number;
-  lat_livraison?: number;
-  lon_livraison?: number;
-  poids: number;
-  volume: number;
-  date_livraison: string;
-  heure_ouverture: string;
-  heure_fermeture: string;
-  statut: string;
-  created_at: string;
-  updated_at: string;
-  transitions?: { statut: string; date: string }[];
-}
-
-export interface CommandeCreate {
+  expediteur_id: number;
   adresse_enlevement: string;
   adresse_livraison: string;
   lat_enlevement: number;
@@ -34,47 +14,48 @@ export interface CommandeCreate {
   date_livraison: string;
   heure_ouverture: string;
   heure_fermeture: string;
+  statut: string;
+  vehicule_id?: number;
+  chauffeur_id?: number;
+  created_at: string;
 }
 
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pages: number;
-}
-
-export async function getCommandes(params?: {
-  page?: number;
+export const getCommandes = async (params?: {
   statut?: string;
-  search?: string;
-}): Promise<PaginatedResponse<Commande>> {
-  if (USE_MOCK) return mockApi.getCommandes(params);
-  const { data } = await client.get('/commandes', { params });
-  return data;
-}
+  skip?: number;
+  limit?: number;
+}): Promise<Commande[]> => {
+  const response = await client.get("/commandes/", { params });
+  return response.data;
+};
 
-export async function getCommande(id: number): Promise<Commande> {
-  if (USE_MOCK) return mockApi.getCommande(id);
-  const { data } = await client.get(`/commandes/${id}`);
-  return data;
-}
+export const getCommande = async (id: number): Promise<Commande> => {
+  const response = await client.get(`/commandes/${id}`);
+  return response.data;
+};
 
-export async function createCommande(payload: CommandeCreate): Promise<Commande> {
-  if (USE_MOCK) return mockApi.createCommande(payload);
-  const { data } = await client.post('/commandes', payload);
-  return data;
-}
+export const createCommande = async (data: Partial<Commande>): Promise<Commande> => {
+  const response = await client.post("/commandes/", data);
+  return response.data;
+};
 
-export async function updateCommandeStatut(
+export const updateCommandeStatut = async (id: number, statut: string): Promise<Commande> => {
+  const response = await client.patch(`/commandes/${id}/statut`, { statut });
+  return response.data;
+};
+
+export const affecterCommande = async (
   id: number,
-  statut: string
-): Promise<Commande> {
-  if (USE_MOCK) return mockApi.updateCommandeStatut(id, statut);
-  const { data } = await client.patch(`/commandes/${id}/statut`, { statut });
-  return data;
-}
+  vehicule_id: number,
+  chauffeur_id: number
+): Promise<Commande> => {
+  const response = await client.patch(`/commandes/${id}/affecter`, {
+    vehicule_id,
+    chauffeur_id,
+  });
+  return response.data;
+};
 
-export async function deleteCommande(id: number): Promise<void> {
-  if (USE_MOCK) return mockApi.deleteCommande(id);
+export const deleteCommande = async (id: number): Promise<void> => {
   await client.delete(`/commandes/${id}`);
-}
+};

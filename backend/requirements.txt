@@ -12,3 +12,6 @@ python-dotenv
 pydantic-settings 
 geoalchemy2
 asyncpg
+greenlet
+email-validator
+bcrypt==4.0.1

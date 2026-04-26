@@ -1,6 +1,4 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
+import client from "./client";
 
 export interface Stop {
   id: number;
@@ -9,56 +7,69 @@ export interface Stop {
   lat: number;
   lon: number;
   ordre: number;
-  heure_prevue: string;
-  heure_reelle?: string;
+  heure_arrivee_prevue?: string;
+  heure_arrivee_reelle?: string;
   statut: string;
 }
 
 export interface Tournee {
   id: number;
-  chauffeur_nom: string;
-  vehicule_immatriculation: string;
   date: string;
-  statut: string;
-  nombre_stops: number;
-  distance_totale: number;
+  distance_totale?: number;
   progression: number;
+  statut: string;
+  heure_depart?: string;
+  vehicule_id: number;
+  chauffeur_id: number;
   stops?: Stop[];
-  anomalies?: { id: number; type: string; description: string }[];
+  created_at: string;
 }
 
-export async function getTournees(params?: {
-  date?: string;
-}): Promise<Tournee[]> {
-  if (USE_MOCK) return mockApi.getTournees();
-  const { data } = await client.get('/tournees', { params });
-  return data;
-}
+export const getTournees = async (): Promise<Tournee[]> => {
+  const response = await client.get("/tournees/");
+  return response.data;
+};
 
-export async function getTournee(id: number): Promise<Tournee> {
-  if (USE_MOCK) return mockApi.getTournee(id);
-  const { data } = await client.get(`/tournees/${id}`);
-  return data;
-}
+export const getTournee = async (id: number): Promise<Tournee> => {
+  const response = await client.get(`/tournees/${id}`);
+  return response.data;
+};
 
-export async function getMaTournee(): Promise<Tournee | null> {
-  if (USE_MOCK) return mockApi.getMaTournee();
-  const { data } = await client.get('/tournees/ma-tournee');
-  return data;
-}
+export const getMaTournee = async (): Promise<Tournee> => {
+  const response = await client.get("/tournees/ma-tournee");
+  return response.data;
+};
 
-export async function confirmerLivraison(tourneeId: number, stopId: number): Promise<Stop> {
-  if (USE_MOCK) return mockApi.confirmerLivraison(tourneeId, stopId);
-  const { data } = await client.patch(`/tournees/${tourneeId}/stops/${stopId}/confirmer`);
-  return data;
-}
+export const demarrerTournee = async (id: number): Promise<Tournee> => {
+  const response = await client.patch(`/tournees/${id}/demarrer`);
+  return response.data;
+};
 
-export async function signalerProbleme(
+export const terminerTournee = async (id: number): Promise<Tournee> => {
+  const response = await client.patch(`/tournees/${id}/terminer`);
+  return response.data;
+};
+
+export const confirmerLivraison = async (
+  tourneeId: number,
+  stopId: number
+): Promise<Stop> => {
+  const response = await client.patch(
+    `/tournees/${tourneeId}/stops/${stopId}/confirmer`
+  );
+  return response.data;
+};
+
+export const signalerProbleme = async (
   tourneeId: number,
   stopId: number,
   description: string
-): Promise<unknown> {
-  if (USE_MOCK) return mockApi.signalerProbleme(tourneeId, stopId, description);
-  const { data } = await client.post(`/tournees/${tourneeId}/stops/${stopId}/probleme`, { description });
-  return data;
-}
+): Promise<any> => {
+  const response = await client.post("/anomalies/", {
+    tournee_id: tourneeId,
+    stop_id: stopId,
+    type: "SIGNALEMENT_CHAUFFEUR",
+    description,
+  });
+  return response.data;
+};

@@ -1,6 +1,4 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
+import client from "./client";
 
 export interface Vehicule {
   id: number;
@@ -14,31 +12,24 @@ export interface VehiculePayload {
   immatriculation: string;
   capacite_poids: number;
   capacite_volume: number;
-  statut: string;
+  statut?: string;
 }
 
-export async function getVehicules(): Promise<Vehicule[]> {
-  if (USE_MOCK) return mockApi.getVehicules();
-  const { data } = await client.get('/vehicules');
-  return data;
-}
+export const getVehicules = async (): Promise<Vehicule[]> => {
+  const response = await client.get("/vehicules/");
+  return response.data;
+};
 
-export async function createVehicule(payload: VehiculePayload): Promise<Vehicule> {
-  if (USE_MOCK) return mockApi.createVehicule(payload);
-  const { data } = await client.post('/vehicules', payload);
-  return data;
-}
+export const createVehicule = async (data: VehiculePayload): Promise<Vehicule> => {
+  const response = await client.post("/vehicules/", data);
+  return response.data;
+};
 
-export async function updateVehicule(
-  id: number,
-  payload: Partial<VehiculePayload>
-): Promise<Vehicule> {
-  if (USE_MOCK) return mockApi.updateVehicule(id, payload);
-  const { data } = await client.patch(`/vehicules/${id}`, payload);
-  return data;
-}
+export const updateVehicule = async (id: number, data: Partial<VehiculePayload>): Promise<Vehicule> => {
+  const response = await client.patch(`/vehicules/${id}`, data);
+  return response.data;
+};
 
-export async function deleteVehicule(id: number): Promise<void> {
-  if (USE_MOCK) return mockApi.deleteVehicule(id);
+export const deleteVehicule = async (id: number): Promise<void> => {
   await client.delete(`/vehicules/${id}`);
-}
+};

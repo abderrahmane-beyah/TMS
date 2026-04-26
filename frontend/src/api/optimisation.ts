@@ -1,17 +1,4 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
-
-export interface OptimisationLaunchPayload {
-  date: string;
-  vehicule_ids: number[];
-  commande_ids: number[];
-  algorithme: 'clarke-wright' | 'or-tools';
-}
-
-export interface OptimisationLaunchResponse {
-  tache_id: string;
-}
+import client from "./client";
 
 export interface OptimisationStatut {
   statut: string;
@@ -19,56 +6,34 @@ export interface OptimisationStatut {
 }
 
 export interface OptimisationResult {
-  id: string;
+  id: number;
   algorithme: string;
   distance_totale: number;
   vehicules_utilises: number;
-  commandes_non_servies: { commande_id: number; raison: string }[];
-  tournees: {
-    vehicule_id: number;
-    vehicule_immatriculation: string;
-    stops: { commande_id: number; adresse: string; ordre: number }[];
-    distance: number;
-  }[];
+  nb_commandes_non_servies: number;
+  resultat_json: any;
 }
 
-export interface TacheOptimisation {
-  id: string;
-  algorithme: string;
-  date: string;
-  statut: 'EN_COURS' | 'TERMINÉE' | 'ERREUR';
-  created_at: string;
-  distance_totale?: number;
-  vehicules_utilises?: number;
-  commandes_non_servies_count?: number;
-}
+export const lancerOptimisation = async (data: {
+  algorithme: "CLARKE_WRIGHT" | "OR_TOOLS";
+  commande_ids: number[];
+  vehicule_ids: number[];
+}) => {
+  const response = await client.post("/optimisation/lancer", data);
+  return response.data;
+};
 
-export async function lancerOptimisation(
-  payload: OptimisationLaunchPayload
-): Promise<OptimisationLaunchResponse> {
-  if (USE_MOCK) return mockApi.lancerOptimisation();
-  const { data } = await client.post('/optimisation/lancer', payload);
-  return data;
-}
+export const getOptimisationStatut = async (id: number): Promise<OptimisationStatut> => {
+  const response = await client.get(`/optimisation/${id}/statut`);
+  return response.data;
+};
 
-export async function getOptimisationStatut(
-  id: string
-): Promise<OptimisationStatut> {
-  if (USE_MOCK) return mockApi.getOptimisationStatut(id);
-  const { data } = await client.get(`/optimisation/${id}/statut`);
-  return data;
-}
+export const getOptimisationResult = async (id: number): Promise<OptimisationResult> => {
+  const response = await client.get(`/optimisation/${id}/resultat`);
+  return response.data;
+};
 
-export async function getOptimisationResult(
-  id: string
-): Promise<OptimisationResult> {
-  if (USE_MOCK) return mockApi.getOptimisationResult();
-  const { data } = await client.get(`/optimisation/${id}/result`);
-  return data;
-}
-
-export async function getOptimisationHistory(): Promise<TacheOptimisation[]> {
-  if (USE_MOCK) return mockApi.getOptimisationHistory();
-  const { data } = await client.get('/optimisation/history');
-  return data;
-}
+export const getOptimisationHistory = async () => {
+  const response = await client.get("/optimisation/historique");
+  return response.data;
+};

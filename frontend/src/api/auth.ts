@@ -1,19 +1,11 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
+import client from "./client";
 
 export interface LoginPayload {
   email: string;
   password: string;
 }
 
-export interface LoginResponse {
-  access_token: string;
-  role: string;
-}
-
-export async function login(payload: LoginPayload): Promise<LoginResponse> {
-  if (USE_MOCK) return mockApi.login(payload);
-  const { data } = await client.post<LoginResponse>('/auth/login', payload);
-  return data;
-}
+export const login = async (payload: LoginPayload) => {
+  const response = await client.post("/auth/login", payload);
+  return response.data;
+};

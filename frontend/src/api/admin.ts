@@ -1,40 +1,38 @@
-import client from './client';
-import { mockApi } from './mock';
-import { USE_MOCK } from './config';
+import client from "./client";
 
 export interface User {
   id: number;
-  email: string;
   nom: string;
+  email: string;
+  telephone?: string;
   role: string;
   actif: boolean;
 }
 
 export interface UserPayload {
-  email: string;
   nom: string;
+  email: string;
+  mot_de_passe?: string;
+  telephone?: string;
   role: string;
-  password?: string;
-  actif?: boolean;
 }
 
-export async function getUsers(): Promise<User[]> {
-  if (USE_MOCK) return mockApi.getUsers();
-  const { data } = await client.get('/admin/users');
-  return data;
-}
+export const getUsers = async (): Promise<User[]> => {
+  const response = await client.get("/admin/users");
+  return response.data;
+};
 
-export async function createUser(payload: UserPayload): Promise<User> {
-  if (USE_MOCK) return mockApi.createUser(payload);
-  const { data } = await client.post('/admin/users', payload);
-  return data;
-}
+export const createUser = async (data: UserPayload): Promise<User> => {
+  const response = await client.post("/admin/users", data);
+  return response.data;
+};
 
-export async function updateUser(
-  id: number,
-  payload: Partial<UserPayload>
-): Promise<User> {
-  if (USE_MOCK) return mockApi.updateUser(id, payload);
-  const { data } = await client.patch(`/admin/users/${id}`, payload);
-  return data;
-}
+export const updateUser = async (id: number, data: Partial<UserPayload>): Promise<User> => {
+  const response = await client.patch(`/admin/users/${id}`, data);
+  return response.data;
+};
+
+export const toggleActif = async (id: number): Promise<User> => {
+  const response = await client.patch(`/admin/users/${id}/toggle-actif`);
+  return response.data;
+};
