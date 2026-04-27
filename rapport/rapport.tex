@@ -1,0 +1,83 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{tikz}
+\usetikzlibrary{shadings}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+\begin{document}
+
+\begin{titlepage}
+
+    \begin{tikzpicture}[remember picture, overlay]
+        \fill[blue!20]
+            ([xshift=0.5cm,yshift=-0.5cm]current page.north west) --
+            ([xshift=8cm,yshift=-0.5cm]current page.north west) --
+            ([xshift=0.5cm,yshift=-8cm]current page.north west) --
+            cycle;
+    \end{tikzpicture}
+
+  
+    \begin{tikzpicture}[remember picture, overlay]
+        \fill[blue!20]
+            ([xshift=-0.5cm,yshift=0.5cm]current page.south east) --
+            ([xshift=-8cm,yshift=0.5cm]current page.south east) --
+            ([xshift=-0.5cm,yshift=8cm]current page.south east) --
+            cycle;
+    \end{tikzpicture}
+
+    \vspace*{1.5cm}
+
+    \begin{center}
+
+        \includegraphics[width=2.7cm]{rim.png}
+        \hspace{7cm}
+        \includegraphics[width=2.7cm]{univ.png} \\[0.2cm]
+
+        \textbf{\large République Islamique de Mauritanie} \\
+        \textbf{Université de Nouakchott} \\
+        \textbf{Faculté des Sciences et Techniques} \\[0.5cm]
+
+        \noindent\rule{\textwidth}{0.2pt} \\[0.5cm]
+
+        {\small
+        \textbf{DIPLÔME DE LICENCE EN MATHÉMATIQUES - INFORMATIQUE} \\
+        \textbf{FILIÈRE : MI} \\[1cm]
+        }
+
+        \textbf{\large Thème :} \\[0.5cm]
+
+        \begin{tikzpicture}
+            \node[
+                draw=blue!20,
+                fill=blue!20,
+                rounded corners=3pt,
+                inner xsep=10pt,
+                inner ysep=10pt,
+                minimum width=0.9\textwidth
+            ] at (0,0) {
+                \parbox{0.85\textwidth}{
+                    \centering
+                    \textbf{\Large Conception et Réalisation d'un Système de Gestion du Transport et d'Optimisation des Tournées de Véhicules à Fenêtres de Temps (VRPTW)}
+                }
+            };
+        \end{tikzpicture} \\[2cm]
+
+        \textbf{Réalisé par :} \\
+        Abderrahmane Abdellahi Beyah \\[1cm]
+
+        \textbf{Encadré par :} \\
+        Dr. Ahmed Sejad \\[2cm]
+
+        \textbf{Année Universitaire 2025--2026}
+
+    \end{center}
+
+\end{titlepage}
+
+\end{document}

@@ -47,3 +47,14 @@ pnpm-debug.log*
 # Editor
 .vscode/
 
+
+
+# LaTeX
+*.aux
+*.log
+*.gz
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+
