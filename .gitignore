@@ -47,7 +47,7 @@ pnpm-debug.log*
 # Editor
 .vscode/
 
-
+.claude/
 
 # LaTeX
 *.aux
