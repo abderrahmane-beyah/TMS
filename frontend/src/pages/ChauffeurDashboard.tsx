@@ -39,7 +39,7 @@ export default function ChauffeurDashboard() {
           <dl className="mb-4 grid grid-cols-3 gap-3 text-center">
             <div className="rounded-lg bg-gray-50 p-3">
               <dt className="text-[11px] text-gray-500">Arrêts</dt>
-              <dd className="text-lg font-bold text-gray-900">{tournee.nombre_stops}</dd>
+              <dd className="text-lg font-bold text-gray-900">{tournee.stops?.length ?? 0}</dd>
             </div>
             <div className="rounded-lg bg-gray-50 p-3">
               <dt className="text-[11px] text-gray-500">Livrés</dt>
@@ -47,7 +47,7 @@ export default function ChauffeurDashboard() {
             </div>
             <div className="rounded-lg bg-gray-50 p-3">
               <dt className="text-[11px] text-gray-500">Distance</dt>
-              <dd className="text-lg font-bold text-gray-900">{formatKm(tournee.distance_totale)}</dd>
+              <dd className="text-lg font-bold text-gray-900">{tournee.distance_totale ? formatKm(tournee.distance_totale) : 'N/A'}</dd>
             </div>
           </dl>
 
@@ -63,7 +63,7 @@ export default function ChauffeurDashboard() {
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">{tournee.vehicule_immatriculation}</span>
+            <span className="text-gray-500">Véhicule #{tournee.vehicule_id}</span>
             <span className="font-medium text-blue-600">Voir les détails →</span>
           </div>
         </div>

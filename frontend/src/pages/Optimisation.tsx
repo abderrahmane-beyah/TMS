@@ -16,8 +16,8 @@ export default function Optimisation() {
   const [selectedCommandes, setSelectedCommandes] = useState<number[]>([]);
   const [algorithme, setAlgorithme] = useState<'heuristique' | 'or-tools'>('heuristique');
 
-  const [tacheIdCW, setTacheIdCW] = useState<string | null>(null);
-  const [tacheIdOR, setTacheIdOR] = useState<string | null>(null);
+  const [tacheIdCW, setTacheIdCW] = useState<number | null>(null);
+  const [tacheIdOR, setTacheIdOR] = useState<number | null>(null);
 
   const { data: vehicules, isLoading: loadingV } = useQuery({
     queryKey: ['vehicules'],
@@ -321,7 +321,7 @@ function ResultPanel({ title, result }: { title: string; result: NonNullable<Ret
           {result.tournees.map((t, i) => (
             <div key={i} className="rounded-lg border border-gray-100 p-3 text-sm">
               <div className="flex justify-between">
-                <span className="font-medium text-gray-900">{t.vehicule_immatriculation}</span>
+                <span className="font-medium text-gray-900">Véhicule #{t.vehicule_id}</span>
                 <span className="text-gray-500">{t.distance?.toFixed(1)} km — {t.stops?.length ?? 0} arrêts</span>
               </div>
             </div>

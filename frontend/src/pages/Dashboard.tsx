@@ -19,11 +19,11 @@ const ROUTE_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#0
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tacheId, setTacheId] = useState<string | null>(null);
+  const [tacheId, setTacheId] = useState<number | null>(null);
 
   const { data: commandes, isLoading: loadingCommandes } = useQuery({
-    queryKey: ['commandes', { page: 1 }],
-    queryFn: () => getCommandes({ page: 1 }),
+    queryKey: ['commandes', { skip: 0, limit: 20 }],
+    queryFn: () => getCommandes({ skip: 0, limit: 20 }),
   });
 
   const { data: tournees, isLoading: loadingTournees } = useQuery({
@@ -222,8 +222,8 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{t.chauffeur_nom}</p>
-                      <p className="text-xs text-gray-500">{t.vehicule_immatriculation} — {t.nombre_stops} arrêts</p>
+                      <p className="text-sm font-medium text-gray-900">Chauffeur #{t.chauffeur_id}</p>
+                      <p className="text-xs text-gray-500">Véhicule #{t.vehicule_id} — {t.stops?.length ?? 0} arrêts</p>
                     </div>
                     <StatusBadge statut={t.statut} />
                   </div>

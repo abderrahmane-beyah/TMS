@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { getOptimisationStatut, getOptimisationResult } from '../api/optimisation';
 import type { OptimisationStatut, OptimisationResult } from '../api/optimisation';
 
-export function useOptimisationPolling(tacheId: string | null) {
+export function useOptimisationPolling(tacheId: number | null) {
   const statut = useQuery<OptimisationStatut>({
     queryKey: ['optimisation-statut', tacheId],
     queryFn: () => getOptimisationStatut(tacheId!),
-    enabled: !!tacheId,
+    enabled: tacheId !== null,
     refetchInterval: (query) => {
       if (query.state.data?.statut === 'EN_COURS') return 3000;
       return false;
@@ -16,7 +16,7 @@ export function useOptimisationPolling(tacheId: string | null) {
   const result = useQuery<OptimisationResult>({
     queryKey: ['optimisation-result', tacheId],
     queryFn: () => getOptimisationResult(tacheId!),
-    enabled: !!tacheId && statut.data?.statut === 'TERMINÉE',
+    enabled: tacheId !== null && statut.data?.statut === 'TERMINÉE',
   });
 
   return {

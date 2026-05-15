@@ -16,10 +16,22 @@ export interface OptimisationResult {
   commandes_non_servies?: any[];
 }
 
+export interface OptimisationHistoryItem {
+  id: number;
+  date_execution: string | null;
+  algorithme: string;
+  statut: string;
+  distance_totale: number | null;
+  nb_vehicules_utilises: number | null;
+  nb_commandes_non_servies: number | null;
+  created_at: string;
+}
+
 export const lancerOptimisation = async (data: {
   algorithme: "HEURISTIQUE" | "OR_TOOLS";
   commande_ids: number[];
   vehicule_ids: number[];
+  date: string;
 }) => {
   const response = await client.post("/optimisation/lancer", data);
   return response.data;
@@ -35,7 +47,7 @@ export const getOptimisationResult = async (id: number): Promise<OptimisationRes
   return response.data;
 };
 
-export const getOptimisationHistory = async () => {
+export const getOptimisationHistory = async (): Promise<OptimisationHistoryItem[]> => {
   const response = await client.get("/optimisation/historique");
   return response.data;
 };

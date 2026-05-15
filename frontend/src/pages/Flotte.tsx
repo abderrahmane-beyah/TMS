@@ -176,7 +176,8 @@ export default function Flotte() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Nom</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Permis</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Téléphone</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Statut</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Actions</th>
                   </tr>
@@ -185,7 +186,8 @@ export default function Flotte() {
                   {chauffeurs?.map((c) => (
                     <tr key={c.id}>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{c.nom}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{c.permis}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{c.email}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{c.telephone || '—'}</td>
                       <td className="px-4 py-3"><StatusBadge statut={c.statut} /></td>
                       <td className="px-4 py-3">
                         <button onClick={() => setEditingC(c)} className="text-sm text-blue-600 hover:underline">Modifier</button>
@@ -274,14 +276,15 @@ function ChauffeurForm({
   loading: boolean;
 }) {
   const [form, setForm] = useState<ChauffeurPayload>(
-    initial ?? { nom: '', permis: '', statut: 'DISPONIBLE' }
+    initial ?? { nom: '', email: '', telephone: '', statut: 'DISPONIBLE' }
   );
   const [errs, setErrs] = useState<Record<string, string>>({});
 
   const handleSubmit = () => {
     const e: Record<string, string> = {};
     if (!form.nom.trim()) e.nom = 'Le nom est requis';
-    if (!form.permis.trim()) e.permis = 'Le permis est requis';
+    if (!form.email.trim()) e.email = "L'email est requis";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide';
     setErrs(e);
     if (Object.keys(e).length === 0) onSubmit(form);
   };
@@ -292,16 +295,19 @@ function ChauffeurForm({
   return (
     <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 font-semibold text-gray-900">{initial ? 'Modifier' : 'Nouveau'} chauffeur</h3>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
           <input placeholder="Nom" value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} className={cls('nom')} />
           {errs.nom && <p className="mt-1 text-xs text-red-500">{errs.nom}</p>}
         </div>
         <div>
-          <input placeholder="Permis" value={form.permis} onChange={(e) => setForm((f) => ({ ...f, permis: e.target.value }))} className={cls('permis')} />
-          {errs.permis && <p className="mt-1 text-xs text-red-500">{errs.permis}</p>}
+          <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={cls('email')} />
+          {errs.email && <p className="mt-1 text-xs text-red-500">{errs.email}</p>}
         </div>
-        <select value={form.statut} onChange={(e) => setForm((f) => ({ ...f, statut: e.target.value }))} className="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+        <div>
+          <input type="tel" placeholder="Téléphone" value={form.telephone || ''} onChange={(e) => setForm((f) => ({ ...f, telephone: e.target.value }))} className={cls('telephone')} />
+        </div>
+        <select value={form.statut || 'DISPONIBLE'} onChange={(e) => setForm((f) => ({ ...f, statut: e.target.value }))} className="rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <option value="DISPONIBLE">Disponible</option>
           <option value="EN_MISSION">En mission</option>
           <option value="HORS_SERVICE">Hors service</option>

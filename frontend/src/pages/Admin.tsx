@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getUsers, createUser, updateUser } from '../api/admin';
+import { getUsers, createUser, updateUser, toggleActif } from '../api/admin';
 import type { User, UserPayload } from '../api/admin';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -25,6 +25,12 @@ export default function Admin() {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<UserPayload> }) => updateUser(id, payload),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); setEditing(null); toast.success('Utilisateur modifié'); },
+    onError: () => toast.error('Erreur'),
+  });
+
+  const toggleActifMutation = useMutation({
+    mutationFn: toggleActif,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('Statut modifié'); },
     onError: () => toast.error('Erreur'),
   });
 
@@ -82,7 +88,7 @@ export default function Admin() {
                         Modifier
                       </button>
                       <button
-                        onClick={() => u.actif ? setConfirmDeactivate(u) : updateMutation.mutate({ id: u.id, payload: { actif: true } })}
+                        onClick={() => u.actif ? setConfirmDeactivate(u) : toggleActifMutation.mutate(u.id)}
                         className={`text-sm hover:underline ${u.actif ? 'text-red-600' : 'text-green-600'}`}
                       >
                         {u.actif ? 'Désactiver' : 'Activer'}
@@ -103,11 +109,12 @@ export default function Admin() {
         confirmLabel="Désactiver"
         onConfirm={() => {
           if (confirmDeactivate) {
-            updateMutation.mutate({ id: confirmDeactivate.id, payload: { actif: false } });
+            toggleActifMutation.mutate(confirmDeactivate.id);
             setConfirmDeactivate(null);
           }
         }}
         onCancel={() => setConfirmDeactivate(null)}
+        loading={toggleActifMutation.isPending}
       />
     </div>
   );
@@ -127,7 +134,7 @@ function UserForm({
   const [form, setForm] = useState<UserPayload>(
     initial
       ? { email: initial.email, nom: initial.nom, role: initial.role }
-      : { email: '', nom: '', role: ROLES.EXPEDITEUR, password: '' }
+      : { email: '', nom: '', role: ROLES.EXPEDITEUR, mot_de_passe: '' }
   );
   const [errs, setErrs] = useState<Record<string, string>>({});
 
@@ -136,7 +143,7 @@ function UserForm({
     if (!form.nom.trim()) e.nom = 'Le nom est requis';
     if (!form.email.trim()) e.email = "L'email est requis";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide';
-    if (!initial && (!form.password || form.password.length < 4)) e.password = 'Minimum 4 caractères';
+    if (!initial && (!form.mot_de_passe || form.mot_de_passe.length < 4)) e.mot_de_passe = 'Minimum 4 caractères';
     setErrs(e);
     if (Object.keys(e).length === 0) onSubmit(form);
   };
@@ -160,8 +167,8 @@ function UserForm({
         </div>
         {!initial && (
           <div>
-            <input type="password" placeholder="Mot de passe" value={form.password || ''} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={cls('password')} />
-            {errs.password && <p className="mt-1 text-xs text-red-500">{errs.password}</p>}
+            <input type="password" placeholder="Mot de passe" value={form.mot_de_passe || ''} onChange={(e) => setForm((f) => ({ ...f, mot_de_passe: e.target.value }))} className={cls('mot_de_passe')} />
+            {errs.mot_de_passe && <p className="mt-1 text-xs text-red-500">{errs.mot_de_passe}</p>}
           </div>
         )}
         <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} className="rounded-lg border border-gray-300 px-3 py-2 text-sm">

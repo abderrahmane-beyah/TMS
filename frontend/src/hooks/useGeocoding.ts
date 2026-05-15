@@ -9,7 +9,7 @@ interface GeocodingResult {
 
 export function useGeocoding() {
   const [loading, setLoading] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const geocode = useCallback(
     async (address: string): Promise<GeocodingResult | null> => {

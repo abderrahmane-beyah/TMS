@@ -41,19 +41,19 @@ export default function Tournees() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-gray-500">Chauffeur</dt>
-                  <dd className="font-medium text-gray-900">{t.chauffeur_nom}</dd>
+                  <dd className="font-medium text-gray-900">#{t.chauffeur_id}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">Véhicule</dt>
-                  <dd className="text-gray-900">{t.vehicule_immatriculation}</dd>
+                  <dd className="text-gray-900">#{t.vehicule_id}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">Arrêts</dt>
-                  <dd className="text-gray-900">{t.nombre_stops}</dd>
+                  <dd className="text-gray-900">{t.stops?.length ?? 0}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">Distance</dt>
-                  <dd className="text-gray-900">{formatKm(t.distance_totale)}</dd>
+                  <dd className="text-gray-900">{t.distance_totale ? formatKm(t.distance_totale) : 'N/A'}</dd>
                 </div>
               </dl>
 

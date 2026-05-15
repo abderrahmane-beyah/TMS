@@ -44,19 +44,19 @@ export default function TourneeDetail() {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
           <p className="text-xs text-gray-500">Chauffeur</p>
-          <p className="mt-1 font-semibold text-gray-900">{tournee.chauffeur_nom}</p>
+          <p className="mt-1 font-semibold text-gray-900">#{tournee.chauffeur_id}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
           <p className="text-xs text-gray-500">Véhicule</p>
-          <p className="mt-1 font-semibold text-gray-900">{tournee.vehicule_immatriculation}</p>
+          <p className="mt-1 font-semibold text-gray-900">#{tournee.vehicule_id}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
           <p className="text-xs text-gray-500">Arrêts</p>
-          <p className="mt-1 font-semibold text-gray-900">{tournee.nombre_stops}</p>
+          <p className="mt-1 font-semibold text-gray-900">{tournee.stops?.length ?? 0}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
           <p className="text-xs text-gray-500">Distance</p>
-          <p className="mt-1 font-semibold text-gray-900">{tournee.distance_totale.toFixed(1)} km</p>
+          <p className="mt-1 font-semibold text-gray-900">{tournee.distance_totale ? tournee.distance_totale.toFixed(1) + ' km' : 'N/A'}</p>
         </div>
       </div>
 
@@ -87,12 +87,14 @@ export default function TourneeDetail() {
                     <p className="text-xs text-gray-500 truncate">{stop.adresse}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs text-gray-500">
-                      Prévu : {formatTime(stop.heure_prevue)}
-                    </p>
-                    {stop.heure_reelle && (
+                    {stop.heure_arrivee_prevue && (
+                      <p className="text-xs text-gray-500">
+                        Prévu : {formatTime(stop.heure_arrivee_prevue)}
+                      </p>
+                    )}
+                    {stop.heure_arrivee_reelle && (
                       <p className="text-xs text-green-600">
-                        Réel : {formatTime(stop.heure_reelle)}
+                        Réel : {formatTime(stop.heure_arrivee_reelle)}
                       </p>
                     )}
                   </div>
@@ -102,20 +104,6 @@ export default function TourneeDetail() {
           </div>
         </div>
       </div>
-
-      {/* Anomalies */}
-      {tournee.anomalies && tournee.anomalies.length > 0 && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-5">
-          <h2 className="mb-3 font-semibold text-red-800">Anomalies</h2>
-          <div className="space-y-2">
-            {tournee.anomalies.map((a) => (
-              <div key={a.id} className="rounded-lg bg-white p-3 text-sm">
-                <span className="font-medium text-red-700">{a.type}</span> — {a.description}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

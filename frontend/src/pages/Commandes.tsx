@@ -17,7 +17,6 @@ export default function Commandes() {
   const { role } = useAuth();
   const [page, setPage] = useState(1);
   const [statutFilter, setStatutFilter] = useState('');
-  const [search, setSearch] = useState('');
 
   // Confirm dialog state
   const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
@@ -26,9 +25,15 @@ export default function Commandes() {
   const [assignVehicule, setAssignVehicule] = useState<number | null>(null);
   const [assignChauffeur, setAssignChauffeur] = useState<number | null>(null);
 
+  const ITEMS_PER_PAGE = 20;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['commandes', { page, statut: statutFilter, search }],
-    queryFn: () => getCommandes({ page, statut: statutFilter || undefined, search: search || undefined }),
+    queryKey: ['commandes', { page, statut: statutFilter }],
+    queryFn: () => getCommandes({
+      skip: (page - 1) * ITEMS_PER_PAGE,
+      limit: ITEMS_PER_PAGE,
+      statut: statutFilter || undefined
+    }),
   });
 
   const { data: vehicules } = useQuery({
@@ -183,14 +188,7 @@ export default function Commandes() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
-        <input
-          type="text"
-          placeholder="Rechercher..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
+      <div className="mb-6">
         <select
           value={statutFilter}
           onChange={(e) => { setStatutFilter(e.target.value); setPage(1); }}
@@ -204,17 +202,12 @@ export default function Commandes() {
         </select>
       </div>
 
-      <DataTable
+      <DataTable<Commande>
         columns={columns}
-        data={(data?.items ?? []) as unknown as Record<string, unknown>[]}
+        data={data ?? []}
         loading={isLoading}
         emptyMessage="Aucune commande trouvée"
-        onRowClick={(row) => navigate(`/commandes/${(row as unknown as Commande).id}`)}
-        pagination={
-          data
-            ? { page: data.page, pages: data.pages, onPageChange: setPage }
-            : undefined
-        }
+        onRowClick={(row) => navigate(`/commandes/${row.id}`)}
       />
 
       <ConfirmDialog

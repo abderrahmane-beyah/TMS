@@ -11,7 +11,7 @@ export default function Anomalies() {
 
   const { data: anomalies, isLoading } = useQuery({
     queryKey: ['anomalies'],
-    queryFn: getAnomalies,
+    queryFn: () => getAnomalies(),
   });
 
   const resolveMutation = useMutation({
@@ -28,7 +28,7 @@ export default function Anomalies() {
     { key: 'stop_id', header: 'Arrêt', render: (row) => row.stop_id ? `#${row.stop_id}` : '—' },
     { key: 'type', header: 'Type', render: (row) => <span className="font-medium">{row.type}</span> },
     { key: 'description', header: 'Description' },
-    { key: 'date', header: 'Date', render: (row) => formatDateTime(row.date) },
+    { key: 'date_signalement', header: 'Date', render: (row) => formatDateTime(row.date_signalement) },
     { key: 'statut', header: 'Statut', render: (row) => <StatusBadge statut={row.statut} /> },
     {
       key: 'actions',
@@ -56,9 +56,9 @@ export default function Anomalies() {
         <p className="text-sm text-gray-500">Gestion des anomalies de livraison</p>
       </div>
 
-      <DataTable
+      <DataTable<Anomalie>
         columns={columns}
-        data={(anomalies ?? []) as unknown as Record<string, unknown>[]}
+        data={anomalies ?? []}
         loading={isLoading}
         emptyMessage="Aucune anomalie en cours"
       />

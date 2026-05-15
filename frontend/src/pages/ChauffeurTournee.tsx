@@ -99,7 +99,7 @@ export default function ChauffeurTournee() {
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">Ma tournée</h1>
         <p className="text-sm text-gray-500">
-          {tournee.vehicule_immatriculation} — {formatKm(tournee.distance_totale)}
+          Véhicule #{tournee.vehicule_id} — {tournee.distance_totale ? formatKm(tournee.distance_totale) : 'Distance à calculer'}
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default function ChauffeurTournee() {
       <div className="mb-5 grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center shadow-sm">
           <p className="text-[11px] text-gray-500">Arrêts</p>
-          <p className="text-lg font-bold text-gray-900">{tournee.nombre_stops}</p>
+          <p className="text-lg font-bold text-gray-900">{sortedStops.length}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center shadow-sm">
           <p className="text-[11px] text-gray-500">Livrés</p>
@@ -183,9 +183,11 @@ export default function ChauffeurTournee() {
                   </div>
                   <p className="mt-0.5 text-sm text-gray-600">{stop.adresse}</p>
                   <div className="mt-1 flex gap-3 text-xs text-gray-500">
-                    <span>Prévu : {formatTime(stop.heure_prevue)}</span>
-                    {stop.heure_reelle && (
-                      <span className="text-green-600">Réel : {formatTime(stop.heure_reelle)}</span>
+                    {stop.heure_arrivee_prevue && (
+                      <span>Prévu : {formatTime(stop.heure_arrivee_prevue)}</span>
+                    )}
+                    {stop.heure_arrivee_reelle && (
+                      <span className="text-green-600">Réel : {formatTime(stop.heure_arrivee_reelle)}</span>
                     )}
                   </div>
 

@@ -59,7 +59,7 @@ export default function CommandeDetail() {
           <dl className="space-y-3">
             <div className="flex justify-between">
               <dt className="text-sm text-gray-500">Expéditeur</dt>
-              <dd className="text-sm font-medium text-gray-900">{commande.expediteur}</dd>
+              <dd className="text-sm font-medium text-gray-900">#{commande.expediteur_id}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-sm text-gray-500">Enlèvement</dt>
@@ -106,7 +106,6 @@ export default function CommandeDetail() {
         <h2 className="mb-6 font-semibold text-gray-900">Chronologie</h2>
         <div className="flex items-center justify-between">
           {timelineSteps.map((step, i) => {
-            const transition = commande.transitions?.find((t) => t.statut === step.statut);
             const isActive = i <= currentIdx;
             return (
               <div key={step.statut} className="flex flex-1 flex-col items-center">
@@ -120,9 +119,6 @@ export default function CommandeDetail() {
                 <p className={`mt-2 text-xs font-medium ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
                   {step.label}
                 </p>
-                {transition && (
-                  <p className="mt-0.5 text-[10px] text-gray-400">{formatDateTime(transition.date)}</p>
-                )}
                 {i < timelineSteps.length - 1 && (
                   <div className="absolute" />
                 )}
