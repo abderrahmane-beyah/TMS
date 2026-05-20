@@ -5,12 +5,14 @@ class VehiculeCreate(BaseModel):
     immatriculation: str
     capacite_poids: float
     capacite_volume: float
+    ville: str | None = None  # City: Nouakchott, Nouadhibou, Rosso, Kaédi
     statut: StatutVehiculeEnum = StatutVehiculeEnum.DISPONIBLE
 
 class VehiculeUpdate(BaseModel):
     immatriculation: str | None = None
     capacite_poids: float | None = None
     capacite_volume: float | None = None
+    ville: str | None = None
     statut: StatutVehiculeEnum | None = None
 
 class VehiculeResponse(BaseModel):
@@ -18,6 +20,7 @@ class VehiculeResponse(BaseModel):
     immatriculation: str
     capacite_poids: float
     capacite_volume: float
+    ville: str | None = None
     statut: StatutVehiculeEnum
 
     model_config = {"from_attributes": True}

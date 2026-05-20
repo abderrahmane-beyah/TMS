@@ -80,7 +80,7 @@ export default function Commandes() {
 
   const columns: Column<Commande>[] = [
     { key: 'id', header: 'ID', render: (row) => <span className="font-medium">#{row.id}</span> },
-    { key: 'expediteur', header: 'Expéditeur' },
+    { key: 'expediteur', header: 'Expediteur' },
     { key: 'adresse_enlevement', header: 'Enlèvement', render: (row) => <span className="max-w-[200px] truncate block">{row.adresse_enlevement}</span> },
     { key: 'adresse_livraison', header: 'Livraison', render: (row) => <span className="max-w-[200px] truncate block">{row.adresse_livraison}</span> },
     { key: 'poids', header: 'Poids', render: (row) => `${row.poids} kg` },
@@ -177,7 +177,7 @@ export default function Commandes() {
           <h1 className="text-2xl font-bold text-gray-900">Commandes</h1>
           <p className="text-sm text-gray-500">Gestion des commandes de transport</p>
         </div>
-        {(role === 'Expéditeur' || role === 'Administrateur') && (
+        {(role === 'Expediteur' || role === 'Administrateur') && (
           <button
             onClick={() => navigate('/commandes/nouvelle')}
             className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"

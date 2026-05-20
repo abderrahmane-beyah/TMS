@@ -118,6 +118,10 @@ async def confirmer_livraison(
     if not stop:
         raise HTTPException(status_code=404, detail="Stop introuvable")
 
+    # Prevent confirming an already-delivered stop
+    if stop.statut == StatutStopEnum.LIVREE:
+        raise HTTPException(status_code=400, detail="Cette livraison a déjà été confirmée")
+
     from datetime import datetime, timezone
     stop.statut = StatutStopEnum.LIVREE
     stop.heure_arrivee_reelle = datetime.now(timezone.utc)

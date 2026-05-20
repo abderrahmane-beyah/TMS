@@ -58,7 +58,7 @@ export default function CommandeDetail() {
           <h2 className="mb-4 font-semibold text-gray-900">Détails</h2>
           <dl className="space-y-3">
             <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">Expéditeur</dt>
+              <dt className="text-sm text-gray-500">Expediteur</dt>
               <dd className="text-sm font-medium text-gray-900">#{commande.expediteur_id}</dd>
             </div>
             <div className="flex justify-between">

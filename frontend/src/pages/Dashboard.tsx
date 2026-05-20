@@ -183,7 +183,7 @@ export default function Dashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Expéditeur</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Expediteur</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Statut</th>
                   </tr>
                 </thead>

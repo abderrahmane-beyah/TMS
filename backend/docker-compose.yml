@@ -19,5 +19,16 @@ services:
     ports:
       - "6379:6379"
 
+  osrm:
+    image: osrm/osrm-backend:latest
+    platform: linux/amd64
+    container_name: osrm_mauritania
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./osrm-data:/data
+    command: osrm-routed --algorithm mld /data/mauritania-latest.osrm
+    restart: unless-stopped
+
 volumes:
   postgres_data:

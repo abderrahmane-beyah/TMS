@@ -21,7 +21,7 @@ export default function Login() {
       await login({ email, password });
       const role = localStorage.getItem('role');
       switch (role) {
-        case 'Expéditeur':
+        case 'Expediteur':
           navigate('/commandes');
           break;
         case 'Chauffeur':

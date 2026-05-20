@@ -39,7 +39,7 @@ export const router = createBrowserRouter([
       {
         path: 'commandes',
         element: (
-          <ProtectedRoute allowedRoles={['Dispatcheur', 'Expéditeur', 'Administrateur']}>
+          <ProtectedRoute allowedRoles={['Dispatcheur', 'Expediteur', 'Administrateur']}>
             <Commandes />
           </ProtectedRoute>
         ),
@@ -47,7 +47,7 @@ export const router = createBrowserRouter([
       {
         path: 'commandes/nouvelle',
         element: (
-          <ProtectedRoute allowedRoles={['Expéditeur', 'Administrateur']}>
+          <ProtectedRoute allowedRoles={['Expediteur', 'Administrateur']}>
             <NouvelleCommande />
           </ProtectedRoute>
         ),

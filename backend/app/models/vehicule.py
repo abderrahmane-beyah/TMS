@@ -10,6 +10,7 @@ class Vehicule(Base):
     immatriculation = Column(String, unique=True, nullable=False)
     capacite_poids  = Column(Float, nullable=False)
     capacite_volume = Column(Float, nullable=False)
+    ville           = Column(String, nullable=True)  # City where vehicle is based (Nouakchott, Nouadhibou, etc.)
     statut          = Column(SAEnum(StatutVehiculeEnum), default=StatutVehiculeEnum.DISPONIBLE)
 
     # Relationships

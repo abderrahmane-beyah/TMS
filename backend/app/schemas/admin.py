@@ -7,11 +7,13 @@ class UserCreate(BaseModel):
     email: EmailStr
     mot_de_passe: str
     telephone: Optional[str] = None
+    ville: Optional[str] = None  
     role: RoleEnum
 
 class UserUpdate(BaseModel):
     nom: Optional[str] = None
     telephone: Optional[str] = None
+    ville: Optional[str] = None  
     role: Optional[RoleEnum] = None
 
 class UserResponse(BaseModel):
@@ -19,6 +21,7 @@ class UserResponse(BaseModel):
     nom: str
     email: str
     telephone: Optional[str] = None
+    ville: Optional[str] = None
     role: RoleEnum
     actif: bool
 

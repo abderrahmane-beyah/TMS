@@ -13,6 +13,7 @@ class Utilisateur(Base):
     mot_de_passe  = Column(String, nullable=False)
     telephone     = Column(String, nullable=True)
     role          = Column(SAEnum(RoleEnum), nullable=False)
+    ville         = Column(String, nullable=True)  # City assignment (Nouakchott, Nouadhibou, Rosso, Kaédi)
     actif         = Column(Boolean, default=True)
     statut        = Column(SAEnum(StatutChauffeurEnum), nullable=True)
     created_at    = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

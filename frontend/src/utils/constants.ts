@@ -33,7 +33,7 @@ export const MARKER_COLORS: Record<string, string> = {
 };
 
 export const ROLES = {
-  EXPEDITEUR: 'Expéditeur',
+  EXPEDITEUR: 'Expediteur',
   DISPATCHEUR: 'Dispatcheur',
   CHAUFFEUR: 'Chauffeur',
   ADMINISTRATEUR: 'Administrateur',

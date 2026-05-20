@@ -18,7 +18,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 const normalizeRole = (role: string | undefined | null): string => {
   // "ADMINISTRATEUR" -> "Administrateur"
   // "DISPATCHEUR" -> "Dispatcheur"
-  // "EXPEDITEUR" -> "Expéditeur"
+  // "EXPEDITEUR" -> "Expediteur"
   // "CHAUFFEUR" -> "Chauffeur"
   if (!role) {
     console.error('normalizeRole: role is undefined or null');
