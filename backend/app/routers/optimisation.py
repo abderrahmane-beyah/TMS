@@ -40,18 +40,18 @@ async def lancer_optimisation(
         from app.solver.tasks import run_optimisation
         run_optimisation.delay(
             tache_id=tache.id,
+            warehouse_id=payload.warehouse_id,
             commande_ids=payload.commande_ids,
             vehicule_ids=payload.vehicule_ids,
             date_str=str(payload.date),
         )
     except Exception:
-        # Celery/broker not available — task stays EN_ATTENTE until worker picks it up
+        # Celery/broker non disponible — la tâche reste EN_ATTENTE jusqu'à ce qu'un worker la prenne
         pass
 
     return TacheLanceeResponse(tache_id=tache.id)
 
 
-# NOTE: /historique must be defined before /{tache_id}/... to avoid routing conflict
 @router.get("/historique", response_model=list[TacheResultatResponse])
 async def historique_optimisations(
     db: AsyncSession = Depends(get_db),

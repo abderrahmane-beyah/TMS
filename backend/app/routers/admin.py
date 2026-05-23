@@ -24,7 +24,6 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role(RoleEnum.ADMINISTRATEUR))
 ):
-    # Check email not already taken
     result = await db.execute(
         select(Utilisateur).where(Utilisateur.email == payload.email)
     )

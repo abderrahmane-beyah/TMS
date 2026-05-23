@@ -5,20 +5,36 @@ from sqlalchemy.orm import selectinload
 from datetime import date
 from app.database import get_db
 from app.models.tournee import Tournee, StopTournee
-from app.models.enums import RoleEnum, StatutTourneeEnum, StatutStopEnum
-from app.schemas.tournee import TourneeResponse, TourneeDetailResponse, StopResponse
+from app.models.commande import Commande
+from app.models.enums import RoleEnum, StatutTourneeEnum, StatutStopEnum, StatutCommandeEnum
+from app.schemas.tournee import TourneeResponse, TourneeDetailResponse, StopResponse, TourneeUpdate
 from app.core.dependencies import get_current_user, require_role
 from app.models.utilisateur import Utilisateur
 
 router = APIRouter(prefix="/api/v1/tournees", tags=["Tournées"])
 
 
-@router.get("/", response_model=list[TourneeResponse])
+@router.get("/", response_model=list[TourneeDetailResponse])
 async def list_tournees(
     db: AsyncSession = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user)
 ):
-    result = await db.execute(select(Tournee).order_by(Tournee.date.desc()))
+    # Les chauffeurs ne voient que leurs propres tournées
+    # Les dispatcheurs et admins voient toutes les tournées
+    if current_user.role == RoleEnum.CHAUFFEUR:
+        result = await db.execute(
+            select(Tournee)
+            .where(Tournee.chauffeur_id == current_user.id)
+            .options(selectinload(Tournee.stops))
+            .order_by(Tournee.date.desc())
+        )
+    else:
+        result = await db.execute(
+            select(Tournee)
+            .options(selectinload(Tournee.stops))
+            .order_by(Tournee.date.desc())
+        )
+
     return result.scalars().all()
 
 
@@ -31,11 +47,19 @@ async def ma_tournee(
     result = await db.execute(
         select(Tournee)
         .where(Tournee.chauffeur_id == current_user.id, Tournee.date == today)
-        .options(selectinload(Tournee.stops))
+        .options(
+            selectinload(Tournee.stops).selectinload(StopTournee.commande)
+        )
     )
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Aucune tournée assignée aujourd'hui")
+
+    if tournee and tournee.stops:
+        for stop in tournee.stops:
+            if hasattr(stop, 'commande') and stop.commande:
+                stop.commande_statut = stop.commande.statut
+
     return tournee
 
 
@@ -48,11 +72,64 @@ async def get_tournee(
     result = await db.execute(
         select(Tournee)
         .where(Tournee.id == tournee_id)
-        .options(selectinload(Tournee.stops))
+        .options(
+            selectinload(Tournee.stops).selectinload(StopTournee.commande)
+        )
     )
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Tournée introuvable")
+
+    if tournee and tournee.stops:
+        for stop in tournee.stops:
+            if hasattr(stop, 'commande') and stop.commande:
+                stop.commande_statut = stop.commande.statut
+
+    return tournee
+
+
+@router.patch("/{tournee_id}", response_model=TourneeResponse)
+async def update_tournee(
+    tournee_id: int,
+    data: TourneeUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Utilisateur = Depends(
+        require_role(RoleEnum.DISPATCHEUR, RoleEnum.ADMINISTRATEUR)
+    )
+):
+    result = await db.execute(select(Tournee).where(Tournee.id == tournee_id))
+    tournee = result.scalar_one_or_none()
+    if not tournee:
+        raise HTTPException(status_code=404, detail="Tournée introuvable")
+
+    if tournee.statut != StatutTourneeEnum.PLANIFIEE:
+        raise HTTPException(
+            status_code=400,
+            detail="Seules les tournées planifiées peuvent être modifiées"
+        )
+
+    if data.chauffeur_id is not None:
+        from app.models.utilisateur import Utilisateur
+        chauffeur_result = await db.execute(
+            select(Utilisateur).where(Utilisateur.id == data.chauffeur_id)
+        )
+        chauffeur = chauffeur_result.scalar_one_or_none()
+        if not chauffeur or chauffeur.role != RoleEnum.CHAUFFEUR:
+            raise HTTPException(status_code=404, detail="Chauffeur introuvable")
+        tournee.chauffeur_id = data.chauffeur_id
+
+    if data.vehicule_id is not None:
+        from app.models.vehicule import Vehicule
+        vehicule_result = await db.execute(
+            select(Vehicule).where(Vehicule.id == data.vehicule_id)
+        )
+        vehicule = vehicule_result.scalar_one_or_none()
+        if not vehicule:
+            raise HTTPException(status_code=404, detail="Véhicule introuvable")
+        tournee.vehicule_id = data.vehicule_id
+
+    await db.commit()
+    await db.refresh(tournee)
     return tournee
 
 
@@ -73,6 +150,21 @@ async def demarrer_tournee(
     from datetime import datetime, timezone
     tournee.statut = StatutTourneeEnum.EN_COURS
     tournee.heure_depart = datetime.now(timezone.utc)
+
+    # Marquer toutes les commandes de cette tournée comme EN_COURS
+    stops_result = await db.execute(
+        select(StopTournee).where(StopTournee.tournee_id == tournee_id)
+    )
+    stops = stops_result.scalars().all()
+    for stop in stops:
+        if stop.commande_id:
+            commande_result = await db.execute(
+                select(Commande).where(Commande.id == stop.commande_id)
+            )
+            commande = commande_result.scalar_one_or_none()
+            if commande and commande.statut == StatutCommandeEnum.AFFECTEE:
+                commande.statut = StatutCommandeEnum.EN_COURS
+
     await db.commit()
     await db.refresh(tournee)
     return tournee
@@ -118,7 +210,7 @@ async def confirmer_livraison(
     if not stop:
         raise HTTPException(status_code=404, detail="Stop introuvable")
 
-    # Prevent confirming an already-delivered stop
+    # Empêcher la confirmation d'un arrêt déjà livré
     if stop.statut == StatutStopEnum.LIVREE:
         raise HTTPException(status_code=400, detail="Cette livraison a déjà été confirmée")
 
@@ -126,7 +218,14 @@ async def confirmer_livraison(
     stop.statut = StatutStopEnum.LIVREE
     stop.heure_arrivee_reelle = datetime.now(timezone.utc)
 
-    # Update tournée progression
+    if stop.commande_id:
+        commande_result = await db.execute(
+            select(Commande).where(Commande.id == stop.commande_id)
+        )
+        commande = commande_result.scalar_one_or_none()
+        if commande:
+            commande.statut = StatutCommandeEnum.LIVREE
+
     all_stops = await db.execute(
         select(StopTournee).where(StopTournee.tournee_id == tournee_id)
     )

@@ -10,6 +10,7 @@ export interface Stop {
   heure_arrivee_prevue?: string;
   heure_arrivee_reelle?: string;
   statut: string;
+  commande_statut?: string; // Status of the associated commande (can be ANNULEE)
 }
 
 export interface Tournee {
@@ -19,6 +20,9 @@ export interface Tournee {
   progression: number;
   statut: string;
   heure_depart?: string;
+  depot_lat?: number;
+  depot_lon?: number;
+  warehouse_id?: number;
   vehicule_id: number;
   chauffeur_id: number;
   stops?: Stop[];
@@ -62,14 +66,30 @@ export const confirmerLivraison = async (
 
 export const signalerProbleme = async (
   tourneeId: number,
-  stopId: number,
+  stopId: number | null,
   description: string
 ): Promise<any> => {
-  const response = await client.post("/anomalies/", {
+  const payload: any = {
     tournee_id: tourneeId,
-    stop_id: stopId,
     type: "SIGNALEMENT_CHAUFFEUR",
     description,
-  });
+  };
+  if (stopId !== null) {
+    payload.stop_id = stopId;
+  }
+  const response = await client.post("/anomalies/", payload);
+  return response.data;
+};
+
+export interface TourneeUpdatePayload {
+  chauffeur_id?: number;
+  vehicule_id?: number;
+}
+
+export const updateTournee = async (
+  id: number,
+  data: TourneeUpdatePayload
+): Promise<Tournee> => {
+  const response = await client.patch(`/tournees/${id}`, data);
   return response.data;
 };

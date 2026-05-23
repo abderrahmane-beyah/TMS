@@ -5,6 +5,9 @@ export interface Vehicule {
   immatriculation: string;
   capacite_poids: number;
   capacite_volume: number;
+  type_vehicule: 'normal' | 'refrigere' | 'congelateur';
+  ville?: string;
+  warehouse_id?: number;
   statut: string;
 }
 
@@ -12,6 +15,9 @@ export interface VehiculePayload {
   immatriculation: string;
   capacite_poids: number;
   capacite_volume: number;
+  type_vehicule?: 'normal' | 'refrigere' | 'congelateur';
+  ville?: string;
+  warehouse_id?: number;
   statut?: string;
 }
 

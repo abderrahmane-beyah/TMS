@@ -5,6 +5,8 @@ export interface Chauffeur {
   nom: string;
   email: string;
   telephone?: string;
+  ville?: string;
+  warehouse_id?: number;
   statut: string;
   actif: boolean;
 }
@@ -14,6 +16,8 @@ export interface ChauffeurPayload {
   email: string;
   mot_de_passe?: string;
   telephone?: string;
+  ville?: string;
+  warehouse_id?: number;
   statut?: string;
 }
 

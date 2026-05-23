@@ -13,14 +13,18 @@ class Tournee(Base):
     progression             = Column(Integer, default=0)
     statut                  = Column(SAEnum(StatutTourneeEnum), default=StatutTourneeEnum.PLANIFIEE)
     heure_depart            = Column(DateTime(timezone=True), nullable=True)
+    depot_lat               = Column(Float, nullable=True)  # Latitude du point de départ (dépôt)
+    depot_lon               = Column(Float, nullable=True)  # Longitude du point de départ (dépôt)
     vehicule_id             = Column(Integer, ForeignKey("vehicules.id"), nullable=False)
     chauffeur_id            = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
+    warehouse_id            = Column(Integer, ForeignKey("warehouses.id"), nullable=True)
     tache_optimisation_id   = Column(Integer, ForeignKey("taches_optimisation.id"), nullable=True)
     created_at              = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     vehicule        = relationship("Vehicule", back_populates="tournees")
     chauffeur       = relationship("Utilisateur", foreign_keys=[chauffeur_id], back_populates="tournees_effectuees")
+    warehouse       = relationship("Warehouse", back_populates="tournees")
     stops           = relationship("StopTournee", back_populates="tournee", order_by="StopTournee.ordre")
     anomalies       = relationship("Anomalie", back_populates="tournee")
     tache           = relationship("TacheOptimisation", back_populates="tournees")

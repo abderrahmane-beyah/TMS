@@ -7,13 +7,15 @@ class ChauffeurCreate(BaseModel):
     email: str
     mot_de_passe: str
     telephone: Optional[str] = None
-    ville: Optional[str] = None  # City: Nouakchott, Nouadhibou, Rosso, Kaédi
+    ville: Optional[str] = None  # Ville: Nouakchott, Nouadhibou, Rosso, Kaédi
+    warehouse_id: Optional[int] = None
     statut: StatutChauffeurEnum = StatutChauffeurEnum.DISPONIBLE
 
 class ChauffeurUpdate(BaseModel):
     nom: Optional[str] = None
     telephone: Optional[str] = None
-    ville: Optional[str] = None  # Changeable city assignment
+    ville: Optional[str] = None
+    warehouse_id: Optional[int] = None
     statut: Optional[StatutChauffeurEnum] = None
 
 class ChauffeurResponse(BaseModel):
@@ -22,6 +24,7 @@ class ChauffeurResponse(BaseModel):
     email: str
     telephone: Optional[str] = None
     ville: Optional[str] = None
+    warehouse_id: Optional[int] = None
     statut: Optional[StatutChauffeurEnum] = None
     actif: bool
 

@@ -6,6 +6,7 @@ from app.models.enums import AlgorithmeEnum, StatutTacheEnum
 
 class LancerOptimisationRequest(BaseModel):
     algorithme: AlgorithmeEnum
+    warehouse_id: int
     commande_ids: list[int]
     vehicule_ids: list[int]
     date: date
@@ -34,6 +35,8 @@ class TacheResultatResponse(BaseModel):
     nb_commandes_non_servies: Optional[int] = None
     resultat_json: Optional[Any] = None
     temps_execution: Optional[float] = None
+    cpu_usage_percent: Optional[float] = None  # Utilisation CPU en pourcentage
+    memory_usage_mb: Optional[float] = None    # Utilisation mémoire en MB
     date_execution: Optional[datetime] = None
     created_at: datetime
 

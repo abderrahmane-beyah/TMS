@@ -11,7 +11,21 @@ export interface OptimisationResult {
   distance_totale: number;
   nb_vehicules_utilises: number;
   nb_commandes_non_servies: number;
-  resultat_json: any;
+  resultat_json: {
+    tournees: Array<{
+      vehicule_id: number;
+      stops: any[];
+      distance: number;
+      heure_depart_prevue: string;
+      heure_retour_depot: string;
+      charge_poids: number;
+      charge_volume: number;
+    }>;
+    commandes_non_servies: Array<{
+      commande_id: number;
+      raison: string;  // e.g., "Aucun véhicule compatible (requiert: refrigere)", "Fenêtre temporelle trop restrictive"
+    }>;
+  };
   tournees?: any[];
   commandes_non_servies?: any[];
 }
@@ -28,6 +42,7 @@ export interface OptimisationHistoryItem {
 }
 
 export const lancerOptimisation = async (data: {
+  warehouse_id: number;
   algorithme: "HEURISTIQUE" | "OR_TOOLS";
   commande_ids: number[];
   vehicule_ids: number[];

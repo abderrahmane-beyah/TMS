@@ -19,7 +19,6 @@ async def list_chauffeurs(
         select(Utilisateur).where(Utilisateur.role == RoleEnum.CHAUFFEUR)
     )
     chauffeurs = result.scalars().all()
-    # Add statut field dynamically
     for c in chauffeurs:
         if not hasattr(c, 'statut') or c.statut is None:
             c.statut = StatutChauffeurEnum.DISPONIBLE

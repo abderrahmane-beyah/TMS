@@ -11,6 +11,7 @@ class StatutCommandeEnum(str, enum.Enum):
     AFFECTEE = "AFFECTEE"
     EN_COURS = "EN_COURS"
     LIVREE = "LIVREE"
+    ANNULEE = "ANNULEE"  # Commande annulée (non supprimée, juste marquée comme annulée)
 
 class StatutTourneeEnum(str, enum.Enum):
     PLANIFIEE = "PLANIFIEE"
@@ -51,3 +52,12 @@ class StatutTacheEnum(str, enum.Enum):
     EN_COURS = "EN_COURS"
     TERMINEE = "TERMINEE"
     ERREUR = "ERREUR"
+
+class VehiculeTypeEnum(str, enum.Enum):
+    normal       = "normal"
+    refrigere    = "refrigere"
+    congelateur  = "congelateur"
+
+class TimeWindowTypeEnum(str, enum.Enum):
+    HARD = "HARD"  # Doit livrer dans la fenêtre ou abandonner la commande
+    SOFT = "SOFT"  # Peut livrer en retard avec pénalité

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional
-from app.models.enums import StatutTourneeEnum, StatutStopEnum
+from app.models.enums import StatutTourneeEnum, StatutStopEnum, StatutCommandeEnum
 
 class StopResponse(BaseModel):
     id: int
@@ -13,6 +13,7 @@ class StopResponse(BaseModel):
     heure_arrivee_prevue: Optional[datetime] = None
     heure_arrivee_reelle: Optional[datetime] = None
     statut: StatutStopEnum
+    commande_statut: Optional[StatutCommandeEnum] = None
 
     model_config = {"from_attributes": True}
 
@@ -23,6 +24,9 @@ class TourneeResponse(BaseModel):
     progression: int
     statut: StatutTourneeEnum
     heure_depart: Optional[datetime] = None
+    depot_lat: Optional[float] = None
+    depot_lon: Optional[float] = None
+    warehouse_id: Optional[int] = None
     vehicule_id: int
     chauffeur_id: int
     tache_optimisation_id: Optional[int] = None
@@ -32,3 +36,7 @@ class TourneeResponse(BaseModel):
 
 class TourneeDetailResponse(TourneeResponse):
     stops: list[StopResponse] = []
+
+class TourneeUpdate(BaseModel):
+    chauffeur_id: Optional[int] = None
+    vehicule_id: Optional[int] = None

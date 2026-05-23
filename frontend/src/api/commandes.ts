@@ -3,10 +3,8 @@ import client from "./client";
 export interface Commande {
   id: number;
   expediteur_id: number;
-  adresse_enlevement: string;
+  warehouse_id?: number;
   adresse_livraison: string;
-  lat_enlevement: number;
-  lon_enlevement: number;
   lat_livraison: number;
   lon_livraison: number;
   poids: number;
@@ -15,6 +13,7 @@ export interface Commande {
   heure_ouverture: string;
   heure_fermeture: string;
   statut: string;
+  type_vehicule_requis?: 'normal' | 'refrigere' | 'congelateur';
   vehicule_id?: number;
   chauffeur_id?: number;
   created_at: string;
@@ -36,6 +35,11 @@ export const getCommande = async (id: number): Promise<Commande> => {
 
 export const createCommande = async (data: Partial<Commande>): Promise<Commande> => {
   const response = await client.post("/commandes/", data);
+  return response.data;
+};
+
+export const updateCommande = async (id: number, data: Partial<Commande>): Promise<Commande> => {
+  const response = await client.patch(`/commandes/${id}`, data);
   return response.data;
 };
 
