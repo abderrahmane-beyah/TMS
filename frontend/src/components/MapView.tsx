@@ -1,7 +1,8 @@
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { MARKER_COLORS } from '../utils/constants';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { fetchOSRMRoute } from '../utils/osrm';
 
 function createIcon(color: string) {
   return L.divIcon({
@@ -43,6 +44,17 @@ function FitBounds({ markers }: { markers: MapMarker[] }) {
   return null;
 }
 
+function OSRMRoute({ points, color }: { points: [number, number][]; color: string }) {
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][]>(points);
+
+  useEffect(() => {
+    // Fetch OSRM route on mount or when points change
+    fetchOSRMRoute(points).then(setRouteGeometry);
+  }, [points]);
+
+  return <Polyline positions={routeGeometry} pathOptions={{ color, weight: 3 }} />;
+}
+
 export default function MapView({
   markers = [],
   routes = [],
@@ -75,7 +87,7 @@ export default function MapView({
       ))}
 
       {routes.map((route, i) => (
-        <Polyline key={i} positions={route.points} pathOptions={{ color: route.color, weight: 3 }} />
+        <OSRMRoute key={i} points={route.points} color={route.color} />
       ))}
     </MapContainer>
   );

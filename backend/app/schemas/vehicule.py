@@ -6,7 +6,7 @@ class VehiculeCreate(BaseModel):
     immatriculation: str
     capacite_poids: float
     capacite_volume: float
-    type_vehicule: VehiculeTypeEnum = VehiculeTypeEnum.normal  # Type de véhicule: normal, refrigere, congelateur
+    type_vehicule: VehiculeTypeEnum = VehiculeTypeEnum.NORMAL  # Type de véhicule: normal, refrigere, congelateur
     ville: str | None = None  # Ville: Nouakchott, Nouadhibou, Rosso, Kaédi
     warehouse_id: Optional[int] = None
     statut: StatutVehiculeEnum = StatutVehiculeEnum.DISPONIBLE

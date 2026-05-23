@@ -54,9 +54,9 @@ class StatutTacheEnum(str, enum.Enum):
     ERREUR = "ERREUR"
 
 class VehiculeTypeEnum(str, enum.Enum):
-    normal       = "normal"
-    refrigere    = "refrigere"
-    congelateur  = "congelateur"
+    NORMAL       = "NORMAL"
+    REFRIGERE    = "REFRIGERE"
+    CONGELATEUR  = "CONGELATEUR"
 
 class TimeWindowTypeEnum(str, enum.Enum):
     HARD = "HARD"  # Doit livrer dans la fenêtre ou abandonner la commande

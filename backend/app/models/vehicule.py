@@ -13,7 +13,7 @@ class Vehicule(Base):
     ville           = Column(String, nullable=True)  
     warehouse_id    = Column(Integer, ForeignKey("warehouses.id"), nullable=True)
     statut          = Column(SAEnum(StatutVehiculeEnum), default=StatutVehiculeEnum.DISPONIBLE)
-    type_vehicule   = Column(SAEnum(VehiculeTypeEnum), nullable=False, server_default='normal')
+    type_vehicule   = Column(SAEnum(VehiculeTypeEnum), nullable=False, server_default='NORMAL')
 
     # Relations
     warehouse = relationship("Warehouse", back_populates="vehicules")

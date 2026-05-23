@@ -72,7 +72,7 @@ async def cout_par_km(
     )
     tournees = result.scalars().all()
 
-    COUT_PAR_KM = 0.15  # USD per km
+    COUT_PAR_KM = 0.15  
     data = []
     for t in tournees:
         cout = round(t.distance_totale * COUT_PAR_KM, 2) if t.distance_totale else 0
