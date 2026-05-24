@@ -1,6 +1,6 @@
 """
-Routing service for calculating real distances and travel times
-Only uses real road networks (OSRM or Google Maps)
+Service de routage pour calculer les distances et temps de trajet réels.
+Utilise uniquement des réseaux routiers réels (OSRM ou Google Maps).
 """
 from typing import List, Tuple
 import requests
@@ -9,16 +9,16 @@ from app.config import settings
 
 class RoutingService:
     """
-    Service for calculating real road distances and travel times
-    Supports OSRM (recommended) or Google Maps Distance Matrix API
+    Service de calcul des distances routières et temps de trajet réels.
+    Prend en charge OSRM (recommandé) ou l'API Google Distance Matrix.
     """
 
     def __init__(self, backend: str = "osrm"):
         """
-        Initialize routing service
+        Initialise le service de routage.
 
         Args:
-            backend: 'osrm' or 'google'
+            backend: 'osrm' ou 'google'
         """
         if backend not in ['osrm', 'google']:
             raise ValueError(f"Invalid routing backend: {backend}. Use 'osrm' or 'google'")
@@ -32,15 +32,15 @@ class RoutingService:
 
     def _osrm_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> Tuple[float, float]:
         """
-        Get real road distance and time using OSRM
+        Récupère la distance routière et le temps de trajet via OSRM.
 
         Returns:
             (distance_km, time_seconds)
 
         Raises:
-            Exception if OSRM service fails or route not found
+            Exception si le service OSRM échoue ou si l'itinéraire est introuvable
         """
-        # OSRM uses lon,lat format
+        # OSRM utilise le format lon,lat
         url = f"{self.osrm_url}/route/v1/driving/{lon1},{lat1};{lon2},{lat2}"
         params = {
             'overview': 'false',
@@ -56,7 +56,7 @@ class RoutingService:
                 raise ValueError(f"OSRM routing failed: {data.get('message', 'Unknown error')}")
 
             route = data['routes'][0]
-            distance_km = route['distance'] / 1000  # Convert meters to km
+            distance_km = route['distance'] / 1000  # Convertir les mètres en km
             time_seconds = route['duration']
 
             return distance_km, time_seconds
@@ -68,13 +68,13 @@ class RoutingService:
 
     def _google_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> Tuple[float, float]:
         """
-        Get real road distance and time using Google Maps Distance Matrix API
+        Récupère la distance routière et le temps via l'API Google Distance Matrix.
 
         Returns:
             (distance_km, time_seconds)
 
         Raises:
-            Exception if Google Maps API fails or route not found
+            Exception si l'API Google échoue ou si l'itinéraire est introuvable
         """
         url = "https://maps.googleapis.com/maps/api/distancematrix/json"
         params = {
@@ -96,7 +96,7 @@ class RoutingService:
             if element['status'] != 'OK':
                 raise ValueError(f"Route not found: {element['status']}")
 
-            distance_km = element['distance']['value'] / 1000  # meters to km
+            distance_km = element['distance']['value'] / 1000  # mètres vers km
             time_seconds = element['duration']['value']
 
             return distance_km, time_seconds
@@ -114,17 +114,17 @@ class RoutingService:
         lon2: float
     ) -> Tuple[float, float]:
         """
-        Get real road distance and travel time between two points
+        Récupère la distance routière réelle et le temps de trajet entre deux points.
 
         Args:
-            lat1, lon1: Origin coordinates
-            lat2, lon2: Destination coordinates
+            lat1, lon1: Coordonnées d'origine
+            lat2, lon2: Coordonnées de destination
 
         Returns:
             (distance_km, time_seconds)
 
         Raises:
-            Exception if routing service fails
+            Exception si le service de routage échoue
         """
         if self.backend == 'osrm':
             return self._osrm_distance(lat1, lon1, lat2, lon2)
@@ -138,10 +138,10 @@ class RoutingService:
         locations: List[Tuple[float, float]]
     ) -> Tuple[List[List[float]], List[List[float]]]:
         """
-        Build distance and time matrices for multiple locations
+        Construit les matrices de distance et de temps pour plusieurs emplacements.
 
         Args:
-            locations: List of (lat, lon) tuples
+            locations: Liste de tuples (lat, lon)
 
         Returns:
             (distance_matrix_km, time_matrix_seconds)
@@ -171,16 +171,16 @@ class RoutingService:
         return distance_matrix, time_matrix
 
 
-# Singleton instance
+# Instance singleton
 _routing_service = None
 
 
 def get_routing_service(backend: str = "osrm") -> RoutingService:
     """
-    Get or create routing service singleton
+    Récupère ou crée l'instance singleton du service de routage.
 
     Args:
-        backend: 'osrm' or 'google' (only real routing supported)
+        backend: 'osrm' ou 'google' (routage réel uniquement)
     """
     global _routing_service
     if _routing_service is None or _routing_service.backend != backend:

@@ -22,3 +22,4 @@ logs/
 .coverage
 htmlcov/
 postgres_data/
+alembic/

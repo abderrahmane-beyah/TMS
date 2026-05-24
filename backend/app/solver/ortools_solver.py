@@ -1,5 +1,5 @@
 """
-Solveur OR-Tools pour VRPTW (Vehicle Routing Problem with Time Windows)
+Solveur OR-Tools pour VRPTW (problème de tournées de véhicules avec fenêtres temporelles)
 """
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import time
@@ -32,7 +32,7 @@ class ORToolsVRPTWSolver:
         """
         Initialise le solveur OR-Tools
 
-        Args:
+        Paramètres:
             commandes: Liste des dictionnaires de commandes
             vehicules: Liste des dictionnaires de véhicules
             depot_lat: Latitude du dépôt (par défaut depuis la config)
@@ -103,8 +103,8 @@ class ORToolsVRPTWSolver:
         distance_matrix_km, time_matrix_sec = self.routing_service.build_matrix(locations)
 
         # Convertir les distances (km) en unités de coût entières en utilisant l'échelle
-        # UNIQUE partagée. 1 km -> COST_SCALE unités. Note: beta est appliqué
-        # plus tard dans le callback de coût d'arc, NON intégré ici, donc la
+        # UNIQUE partagée. 1 km -> COST_SCALE unités. Remarque : beta est appliqué
+        # plus tard dans la fonction de rappel de coût d'arc, NON intégré ici, donc la
         # distance brute est également réutilisée pour les rapports en km.
         self.distance_matrix = [
             [int(round(dist * self.COST_SCALE)) for dist in row]
@@ -210,7 +210,7 @@ class ORToolsVRPTWSolver:
         Calcule l'heure de départ significative la plus tôt depuis le dépôt.
         Approche juste-à-temps: le plus tard possible tout en atteignant tous les clients.
 
-        Returns:
+        Retour:
             Heure de départ significative la plus tôt en secondes
         """
         # PROBLÈME: Définir une seule heure de départ pour TOUS les véhicules est trop restrictif!
@@ -237,7 +237,7 @@ class ORToolsVRPTWSolver:
         """
         Résout le problème VRPTW
 
-        Args:
+        Paramètres:
             time_limit_seconds: Temps maximum à consacrer à la résolution
             allow_partial: Si True, les commandes peuvent être abandonnées avec une pénalité
             earliest_departure_seconds: Si défini, TOUS les véhicules partagent cette
@@ -251,7 +251,7 @@ class ORToolsVRPTWSolver:
                 Lorsque les deux sont None, l'heure d'ouverture du dépôt est utilisée pour tous
                 les véhicules (comportement mono-trajet).
 
-        Returns:
+        Retour:
             Dictionnaire de solution avec itinéraires et métriques, ou None si aucune solution
         """
         print(f"[DEBUG] Résolution VRPTW avec {self.num_locations} emplacements, {self.num_vehicles} véhicules")
@@ -288,7 +288,7 @@ class ORToolsVRPTWSolver:
         # Créer le modèle de routage
         routing = pywrapcp.RoutingModel(manager)
 
-        # ========== Callback de distance (mise à l'échelle par β) ==========
+        # ========== Fonction de rappel de distance (mise à l'échelle par β) ==========
         def distance_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
@@ -310,13 +310,13 @@ class ORToolsVRPTWSolver:
         fixed_vehicle_cost = int(round(self.alpha * self.COST_SCALE))
         routing.SetFixedCostOfAllVehicles(fixed_vehicle_cost)
 
-        # ========== Callback de temps (avec temps de service) ==========
+        # ========== Fonction de rappel de temps (avec temps de service) ==========
         def time_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
             travel_time = self.time_matrix[from_node][to_node]
 
-            # Ajouter le temps de service à l'emplacement 'from' (10 minutes pour les clients, 0 pour le dépôt)
+            # Ajouter le temps de service au nœud source (10 minutes pour les clients, 0 pour le dépôt)
             service_time = 0 if from_node == 0 else 600  # 600 secondes = 10 minutes
 
             return travel_time + service_time
@@ -326,7 +326,7 @@ class ORToolsVRPTWSolver:
         # Ajouter la dimension temporelle.
         time_dimension_name = 'Time'
 
-        # IMPORTANT: la valeur cumulative de cette dimension est le temps d'horloge
+        # IMPORTANT : la valeur cumulative de cette dimension est le temps d'horloge
         # absolu (secondes depuis minuit), car le départ du dépôt et toutes
         # les fenêtres clients sont des temps absolus. Par conséquent, la
         # "capacité" de la dimension doit être le dernier temps absolu autorisé -- dépôt
@@ -490,7 +490,7 @@ class ORToolsVRPTWSolver:
             #      inférieure à alpha, tout groupe plus petit que
             #      (alpha / pénalité) était abandonné en bloc.
             #
-            # On réutilise self._penalty_scaled, calculé en début de solve(),
+            # On réutilise self._penalty_scaled, calculé en début de résolution (`solve()`),
             # afin que la disjonction et le coût de retard des fenêtres
             # souples partagent EXACTEMENT la même valeur P.
             penalty = self._penalty_scaled
@@ -581,7 +581,7 @@ class ORToolsVRPTWSolver:
             print(f"[INFO] Type de véhicule : {n_restricted} commande(s) "
                   f"restreinte(s) à un type compatible")
 
-        # ========== Capacity Constraints (Weight) ==========
+        # ========== Contraintes de capacité (poids) ==========
         def demand_weight_callback(from_index):
             from_node = manager.IndexToNode(from_index)
             return int(self.demands[from_node]['poids'] * 10)  # Échelle pour la précision
@@ -598,7 +598,7 @@ class ORToolsVRPTWSolver:
             'Capacity_Weight'
         )
 
-        # ========== Capacity Constraints (Volume) ==========
+        # ========== Contraintes de capacité (volume) ==========
         def demand_volume_callback(from_index):
             from_node = manager.IndexToNode(from_index)
             return int(self.demands[from_node]['volume'] * 10)  # Échelle pour la précision
@@ -615,7 +615,7 @@ class ORToolsVRPTWSolver:
             'Capacity_Volume'
         )
 
-        # ========== Search Parameters ==========
+        # ========== Paramètres de recherche ==========
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
         search_parameters.first_solution_strategy = (
             routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
@@ -625,7 +625,7 @@ class ORToolsVRPTWSolver:
         )
         search_parameters.time_limit.FromSeconds(time_limit_seconds)
 
-        # ========== Solve ==========
+        # ========== Résolution ==========
         solution = routing.SolveWithParameters(search_parameters)
 
         if not solution:
@@ -643,7 +643,7 @@ class ORToolsVRPTWSolver:
             print(f"[ERROR] OR-Tools failed with status: {status_name}")
             print(f"[ERROR] Problem details: {len(self.commandes)} commandes, {self.num_vehicles} vehicles")
 
-            # Calculer la demande totale vs capacité
+            # Calculer la demande totale par rapport à la capacité
             total_poids = sum(c['poids'] for c in self.commandes)
             total_volume = sum(c['volume'] for c in self.commandes)
             fleet_poids = sum(v['capacite_poids'] for v in self.vehicules)
@@ -655,7 +655,7 @@ class ORToolsVRPTWSolver:
 
             return None
 
-        # ========== Extract Solution ==========
+        # ========== Extraction de la solution ==========
         return self._extract_solution(manager, routing, solution)
 
     def _extract_solution(
@@ -665,14 +665,14 @@ class ORToolsVRPTWSolver:
         solution: pywrapcp.Assignment
     ) -> Dict[str, Any]:
         """
-        Extract solution from OR-Tools model
+        Extrait la solution depuis le modèle OR-Tools.
         """
         time_dimension = routing.GetDimensionOrDie('Time')
         total_distance = 0
         routes = []
         unserved_commandes = []
 
-        # Suivre quelles commandes sont servies
+        # Suivre les commandes effectivement servies
         served_order_indices = set()
 
         for vehicle_id in range(self.num_vehicles):
@@ -688,7 +688,7 @@ class ORToolsVRPTWSolver:
                 # Ajouter la distance de l'arc vers le prochain nœud
                 route_distance += self.distance_matrix[node_index][manager.IndexToNode(next_index)]
 
-                # Si ce n'est pas le dépôt, c'est une visite client
+                # Si ce n'est pas le dépôt, il s'agit d'une visite client
                 if node_index != 0:
                     if first_customer_node is None:
                         first_customer_node = node_index
@@ -696,7 +696,7 @@ class ORToolsVRPTWSolver:
                     served_order_indices.add(commande_idx)
                     commande = self.commandes[commande_idx]
 
-                    # Récupérer les informations temporelles
+                    # Récupérer les informations de temps
                     time_var = time_dimension.CumulVar(index)
                     arrival_time_seconds = solution.Min(time_var)
 
@@ -706,7 +706,7 @@ class ORToolsVRPTWSolver:
 
                     route_stops.append({
                         'commande_id': commande['id'],
-                        'ordre': len(route_stops) + 1,  # ordre de visite (base 1)
+                        'ordre': len(route_stops) + 1,  # Ordre de visite (base 1)
                         'adresse': commande['adresse_livraison'],
                         'lat': commande['lat_livraison'],
                         'lon': commande['lon_livraison'],
@@ -717,24 +717,24 @@ class ORToolsVRPTWSolver:
 
                 index = next_index
 
-            # Ajouter l'itinéraire seulement s'il a des arrêts
+            # Ajouter l'itinéraire uniquement s'il contient des arrêts
             if route_stops:
                 # route_distance est accumulée en unités de coût (km * COST_SCALE)
                 route_distance_km = route_distance / self.COST_SCALE
                 total_distance += route_distance_km
 
                 # Calculer le départ JUSTE-À-TEMPS basé sur l'itinéraire réel.
-                # Travailler en arrière à partir de l'heure d'arrivée du premier arrêt.
+                # Raisonner à rebours depuis l'heure d'arrivée au premier arrêt.
                 first_stop_arrival_str = route_stops[0]['heure_arrivee_prevue']
                 first_stop_hours, first_stop_minutes, _ = map(int, first_stop_arrival_str.split(':'))
                 first_stop_arrival_seconds = first_stop_hours * 3600 + first_stop_minutes * 60
 
                 # Temps de trajet dépôt -> premier arrêt. Utiliser l'index du nœud
-                # capturé pendant le parcours (robuste aux IDs de commande dupliqués).
+                # capturé pendant le parcours (robuste aux identifiants de commande dupliqués).
                 travel_time_to_first = self.time_matrix[0][first_customer_node]
 
                 # Départ juste-à-temps = première arrivée - temps de trajet.
-                # Ne jamais reporter un départ plus tôt que CE véhicule pourrait
+                # Ne jamais déclarer un départ plus tôt que ce que CE véhicule pourrait
                 # réellement partir: ouverture du dépôt pour un premier trajet, ou son propre
                 # retour + rechargement pour un deuxième trajet contraint.
                 floors = getattr(self, '_departure_floors', None)
@@ -749,7 +749,7 @@ class ORToolsVRPTWSolver:
                 jit_departure_hours = jit_departure_seconds // 3600
                 jit_departure_minutes = (jit_departure_seconds % 3600) // 60
 
-                # Calculer l'heure de retour au dépôt (pour multi-trajets)
+                # Calculer l'heure de retour au dépôt (mode multi-trajets)
                 # Obtenir l'heure au nœud final (quand le véhicule retourne au dépôt)
                 end_index = routing.End(vehicle_id)
                 end_time_var = time_dimension.CumulVar(end_index)
@@ -767,7 +767,7 @@ class ORToolsVRPTWSolver:
                     'heure_retour_depot': f"{return_hours:02d}:{return_minutes:02d}:00",
                 })
 
-        # Trouver les commandes non servies
+        # Identifier les commandes non servies
         for idx, commande in enumerate(self.commandes):
             if idx not in served_order_indices:
                 unserved_commandes.append({
@@ -775,7 +775,7 @@ class ORToolsVRPTWSolver:
                     'raison': 'Capacité ou fenêtre temporelle non satisfaisable'
                 })
 
-        # Journaliser le résumé
+        # Journaliser le récapitulatif
         print(f"[INFO] Solution OR-Tools: {len(routes)} itinéraires, "
               f"{len(served_order_indices)} servies, {len(unserved_commandes)} non servies")
 

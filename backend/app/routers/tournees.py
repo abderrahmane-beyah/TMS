@@ -50,10 +50,20 @@ async def ma_tournee(
         .options(
             selectinload(Tournee.stops).selectinload(StopTournee.commande)
         )
+        .order_by(
+            Tournee.statut.desc(),
+            Tournee.heure_depart.asc()
+        )
     )
-    tournee = result.scalar_one_or_none()
-    if not tournee:
+    tournees = result.scalars().all()
+    if not tournees:
         raise HTTPException(status_code=404, detail="Aucune tournée assignée aujourd'hui")
+
+    tournee = next((t for t in tournees if t.statut == StatutTourneeEnum.EN_COURS), None)
+    if not tournee:
+        tournee = next((t for t in tournees if t.statut == StatutTourneeEnum.PLANIFIEE), None)
+    if not tournee:
+        tournee = tournees[0]
 
     if tournee and tournee.stops:
         for stop in tournee.stops:
@@ -79,6 +89,9 @@ async def get_tournee(
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Tournée introuvable")
+
+    if current_user.role == RoleEnum.CHAUFFEUR and tournee.chauffeur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
 
     if tournee and tournee.stops:
         for stop in tournee.stops:
@@ -145,6 +158,10 @@ async def demarrer_tournee(
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Tournée introuvable")
+
+    if current_user.role == RoleEnum.CHAUFFEUR and tournee.chauffeur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
     if tournee.statut != StatutTourneeEnum.PLANIFIEE:
         raise HTTPException(status_code=400, detail="La tournée n'est pas en statut PLANIFIEE")
     from datetime import datetime, timezone
@@ -182,6 +199,13 @@ async def terminer_tournee(
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Tournée introuvable")
+
+    if current_user.role == RoleEnum.CHAUFFEUR and tournee.chauffeur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
+    if tournee.statut != StatutTourneeEnum.EN_COURS:
+        raise HTTPException(status_code=400, detail="Seules les tournées en cours peuvent être terminées")
+
     tournee.statut = StatutTourneeEnum.TERMINEE
     tournee.progression = 100
     await db.commit()
@@ -210,7 +234,14 @@ async def confirmer_livraison(
     if not stop:
         raise HTTPException(status_code=404, detail="Stop introuvable")
 
-    # Empêcher la confirmation d'un arrêt déjà livré
+    tournee_result = await db.execute(select(Tournee).where(Tournee.id == tournee_id))
+    tournee = tournee_result.scalar_one_or_none()
+    if not tournee:
+        raise HTTPException(status_code=404, detail="Tournée introuvable")
+
+    if current_user.role == RoleEnum.CHAUFFEUR and tournee.chauffeur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
     if stop.statut == StatutStopEnum.LIVREE:
         raise HTTPException(status_code=400, detail="Cette livraison a déjà été confirmée")
 

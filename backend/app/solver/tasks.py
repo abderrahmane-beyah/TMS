@@ -45,7 +45,7 @@ def _run_multi_trip_optimization(
 
     print(f"[INFO] Démarrage de l'optimisation multi-trajets")
 
-    # ========== Phase 1: Premier trajet avec solutions partielles ==========
+    # ========== Étape 1 : premier trajet avec solutions partielles ==========
     solver_phase1 = ORToolsVRPTWSolver(
         commandes_data,
         vehicules_data,
@@ -69,17 +69,17 @@ def _run_multi_trip_optimization(
 
     print(f"[INFO] Phase 1: {len(solution_phase1['tournees'])} itinéraires, {len(unserved)} commandes non servies")
 
-    # ========== Phase 2: Second trajet avec véhicules de retour ==========
+    # ========== Étape 2 : second trajet avec véhicules de retour ==========
 
     # Temps de chargement / rechargement (delta) : décharger les retours,
     # recharger le lot suivant, pause chauffeur. C'est la MÊME opération
     # physique au quai que le chargement du premier trajet, donc on utilise
     # la même valeur configurable DEPOT_LOAD_MINUTES (et non plus un
-    # paramètre "reload" séparé). Le départ du second trajet d'un véhicule
+    # paramètre "rechargement" séparé). Le départ du second trajet d'un véhicule
     # est son heure de retour PLUS ce delta.
     reload_seconds = int(settings.DEPOT_LOAD_MINUTES) * 60
 
-    # Heures de retour par véhicule issues de la phase 1.
+    # Heures de retour par véhicule issues de l'étape 1.
     routes_with_return = [(r['vehicule_id'], r['heure_retour_depot']) for r in solution_phase1['tournees']]
     routes_with_return.sort(key=lambda x: x[1])  # retour le plus tôt en premier
 
@@ -95,7 +95,7 @@ def _run_multi_trip_optimization(
     # d'accord sur l'horizon de la journée.
     depot_close_seconds = settings.DEPOT_CLOSE_HOUR * 3600
 
-    SERVICE_TIME = 600  # 10 min de service ; doit correspondre au callback temps du solveur
+    SERVICE_TIME = 600  # 10 min de service ; doit correspondre à la fonction de rappel de temps du solveur
 
     # Calculer pour chaque véhicule son heure de DISPONIBILITÉ = retour +
     # delta. C'est le plus tôt où il peut réellement repartir (second
@@ -105,13 +105,27 @@ def _run_multi_trip_optimization(
         ret_hour, ret_min, _ = map(int, return_time.split(':'))
         ret_seconds = ret_hour * 3600 + ret_min * 60
         vehicle_ready[vehicule_id] = ret_seconds + reload_seconds
-
+    # Médiane des heures de disponibilité (retour + delta) de tous les
+    # véhicules. Sert de référence pour exclure les véhicules trop en retard
+    # sur le groupe : un véhicule prêt plus d'1h après la médiane est
+    # désynchronisé de la flotte et exclu du second trajet.
+    ready_times = sorted(vehicle_ready.values())
+    n = len(ready_times)
+    if n % 2 == 1:
+        median_ready = ready_times[n // 2]
+    else:
+        median_ready = (ready_times[n // 2 - 1] + ready_times[n // 2]) / 2
+    median_cutoff = median_ready + 3600  # médiane + 1h
     # Véhicules disponibles pour un second trajet : prêts avec assez de
     # journée restante pour un trajet utile (au moins ~1h avant la
     # fermeture du dépôt).
     available_for_second_trip = []
     for vehicule_id, _ in routes_with_return:
-        if vehicle_ready[vehicule_id] < depot_close_seconds - 3600:
+        # Éligible seulement si : (a) assez de journée restante (>= 1h avant
+        # fermeture) ET (b) pas trop en retard sur le groupe (<= médiane + 1h).
+        # Exclu si l'une des deux conditions échoue (OU logique pour l'exclusion).
+        if (vehicle_ready[vehicule_id] < depot_close_seconds - 3600
+                and vehicle_ready[vehicule_id] <= median_cutoff):
             vehicule = next(v for v in vehicules_data if v['id'] == vehicule_id)
             available_for_second_trip.append(vehicule)
 
@@ -190,7 +204,7 @@ def _run_multi_trip_optimization(
         beta=BETA
     )
 
-    # Limite de temps plus courte pour la seconde phase.
+    # Limite de temps plus courte pour la seconde étape.
     solution_phase2 = solver_phase2.solve(
         time_limit_seconds=min(time_limit, 60),
         allow_partial=True,
@@ -210,9 +224,9 @@ def _run_multi_trip_optimization(
 
     # Comptabilisation correcte des commandes non servies : une commande est non
     # servie si elle n'apparaît dans AUCUN itinéraire des deux phases. On ne peut
-    # pas simplement prendre les restes de la Phase 2, car les commandes abandonnées
-    # en Phase 1 puis exclues par le filtre de faisabilité (inatteignables sur un
-    # second trajet) ne sont servies par aucune phase mais seraient autrement non comptées.
+    # pas simplement prendre les restes de l'étape 2, car les commandes abandonnées
+    # à l'étape 1 puis exclues par le filtre de faisabilité (inatteignables sur un
+    # second trajet) ne sont servies par aucune étape mais seraient autrement non comptées.
     served_ids = set()
     for route in combined_tournees:
         for stop in route['stops']:
@@ -275,7 +289,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             # Récupérer l'entrepôt pour les coordonnées du dépôt
             warehouse = db.get(Warehouse, warehouse_id)
             if not warehouse:
-                raise ValueError(f"Warehouse {warehouse_id} not found")
+                raise ValueError(f"Entrepôt {warehouse_id} introuvable")
 
             depot_lat = warehouse.lat
             depot_lon = warehouse.lon
@@ -346,7 +360,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             ).all()
 
             if not available_chauffeurs:
-                raise ValueError(f"No available chauffeur found in warehouse {warehouse.nom}. Please ensure at least one driver is available.")
+                raise ValueError(f"Aucun chauffeur disponible dans l'entrepôt {warehouse.nom}. Veuillez vous assurer qu'au moins un chauffeur est disponible.")
 
             # Limiter les véhicules au nombre de chauffeurs disponibles
             # (un chauffeur ne peut conduire qu'un véhicule à la fois)
@@ -370,7 +384,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             # NB : selon la version de SQLAlchemy, une colonne SAEnum peut
             # être désérialisée soit en membre d'enum (avec .value), soit
             # directement en chaîne. On gère les deux cas via getattr pour
-            # éviter tout AttributeError.
+            # éviter toute erreur d'attribut.
             def _enum_str(val, default=None):
                 if val is None:
                     return default
@@ -385,8 +399,8 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                 'volume': c.volume,
                 'heure_ouverture': c.heure_ouverture,
                 'heure_fermeture': c.heure_fermeture,
-                # Type de véhicule requis (None = aucune exigence, défaut 'NORMAL' appliqué par le solveur).
                 'type_vehicule_requis': _enum_str(c.type_vehicule_requis, None),
+                'time_window_type': _enum_str(c.time_window_type, 'HARD'),
             } for c in commandes]
 
             vehicules_data = [{
@@ -407,7 +421,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             # Capturer l'état initial
             start_time = time_module.time()
             start_cpu_times = process.cpu_times()
-            start_memory = process.memory_info().rss / 1024 / 1024  # MB
+            start_memory = process.memory_info().rss / 1024 / 1024  # Mo
 
             if tache.algorithme == AlgorithmeEnum.OR_TOOLS:
                 # Limite de temps dynamique basée sur la taille du problème
@@ -434,7 +448,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                     date_str,
                     db
                 )
-            else:  # HEURISTIQUE (Solomon I1 with improvements)
+            else:  # HEURISTIQUE (Solomon I1 avec améliorations)
                 solver = HeuristicVRPTWSolver(
                     commandes_data,
                     vehicules_data,
@@ -447,10 +461,10 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                 # Utiliser multi-démarrage avec insertion basée sur le regret pour de meilleurs résultats
                 solution = solver.solve(multi_start=True)
 
-            # Capture final state and calculate resource usage
+            # Capturer l'état final et calculer l'usage des ressources
             end_time = time_module.time()
             end_cpu_times = process.cpu_times()
-            end_memory = process.memory_info().rss / 1024 / 1024  # MB
+            end_memory = process.memory_info().rss / 1024 / 1024  # Mo
 
             temps_execution = end_time - start_time
 
@@ -494,7 +508,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             # Créer les tournées dans la base de données (date_execution déjà analysée plus tôt).
             # Un véhicule peut maintenant avoir DEUX tournées (premier + deuxième trajet). Le
             # même chauffeur physique doit gérer les deux trajets d'un véhicule donné,
-            # donc on assigne les chauffeurs par VÉHICULE (round-robin sur les véhicules),
+            # donc on assigne les chauffeurs par VÉHICULE (rotation circulaire sur les véhicules),
             # pas par tournée -- sinon le trajet 1 et le trajet 2 d'un camion
             # seraient donnés à des chauffeurs différents, ce qui est impossible.
             vehicule_to_chauffeur = {}
@@ -534,7 +548,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
 
                 # Créer les arrêts
                 for stop_data in tournee_data['stops']:
-                    # Analyser l'heure d'arrivée comme datetime avec fuseau horaire
+                    # Analyser l'heure d'arrivée comme objet date/heure avec fuseau horaire
                     heure_arrivee = datetime.strptime(
                         f"{date_str} {stop_data['heure_arrivee_prevue']}", "%Y-%m-%d %H:%M:%S"
                     )
@@ -563,7 +577,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             tache.progression = 90
             db.commit()
 
-            # Update task with results and resource usage
+            # Mettre à jour la tâche avec les résultats et l'usage des ressources
             tache.statut = StatutTacheEnum.TERMINEE
             tache.progression = 100
             tache.distance_totale = solution['distance_totale']

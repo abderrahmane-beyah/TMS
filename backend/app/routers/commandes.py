@@ -56,6 +56,10 @@ async def get_commande(
     commande = result.scalar_one_or_none()
     if not commande:
         raise HTTPException(status_code=404, detail="Commande introuvable")
+
+    if current_user.role == RoleEnum.EXPEDITEUR and commande.expediteur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
     return commande
 
 
@@ -77,7 +81,9 @@ async def update_commande(
     if not commande:
         raise HTTPException(status_code=404, detail="Commande introuvable")
 
-    # Vérification des permissions : expéditeur peut modifier ses propres commandes, admin peut tout modifier
+    if current_user.role == RoleEnum.CHAUFFEUR:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
     if current_user.role == RoleEnum.EXPEDITEUR and commande.expediteur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Accès non autorisé")
 
@@ -173,6 +179,9 @@ async def delete_commande(
     commande = result.scalar_one_or_none()
     if not commande:
         raise HTTPException(status_code=404, detail="Commande introuvable")
+
+    if current_user.role == RoleEnum.CHAUFFEUR:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
 
     if current_user.role == RoleEnum.EXPEDITEUR and commande.expediteur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Accès non autorisé")
