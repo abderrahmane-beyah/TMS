@@ -43,7 +43,6 @@ services:
   - type: web
     name: tms-frontend
     runtime: static
-    plan: free
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: frontend/dist
     routes:
