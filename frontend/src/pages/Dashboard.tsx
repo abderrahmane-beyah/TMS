@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { getCommandes } from '../api/commandes';
 import { getTournees } from '../api/tournees';
 import { getVehicules } from '../api/vehicules';
@@ -19,7 +19,6 @@ const ROUTE_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#0
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [tacheId, setTacheId] = useState<number | null>(null);
 
   const { data: commandes, isLoading: loadingCommandes } = useQuery({

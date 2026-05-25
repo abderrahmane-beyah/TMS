@@ -6,7 +6,6 @@ import { getWarehouses } from '../api/warehouses';
 import { lancerOptimisation, getOptimisationHistory } from '../api/optimisation';
 import { useOptimisationPolling } from '../hooks/useOptimisationPolling';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import StatusBadge from '../components/StatusBadge';
 import { formatDateTime } from '../utils/formatters';
 import toast from 'react-hot-toast';
 
@@ -37,7 +36,7 @@ export default function Optimisation() {
 
   const [tacheId, setTacheId] = useState<number | null>(null);
 
-  const { data: warehouses, isLoading: loadingW } = useQuery({
+  const { data: warehouses } = useQuery({
     queryKey: ['warehouses'],
     queryFn: getWarehouses,
   });
