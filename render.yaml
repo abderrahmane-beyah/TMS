@@ -64,4 +64,4 @@ databases:
   # Redis 
   - name: tms-redis
     plan: free
-    maxmemoryPolicy: noeviction
+
