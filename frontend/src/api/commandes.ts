@@ -3,6 +3,7 @@ import client from "./client";
 export interface Commande {
   id: number;
   expediteur_id: number;
+  expediteur_nom?: string;
   warehouse_id?: number;
   adresse_livraison: string;
   lat_livraison: number;
@@ -13,7 +14,7 @@ export interface Commande {
   heure_ouverture: string;
   heure_fermeture: string;
   statut: string;
-  type_vehicule_requis?: 'normal' | 'refrigere' | 'congelateur';
+  type_vehicule_requis?: 'NORMAL' | 'REFRIGERE' | 'CONGELATEUR';
   vehicule_id?: number;
   chauffeur_id?: number;
   created_at: string;
@@ -21,6 +22,7 @@ export interface Commande {
 
 export const getCommandes = async (params?: {
   statut?: string;
+  warehouse_id?: number;
   skip?: number;
   limit?: number;
 }): Promise<Commande[]> => {

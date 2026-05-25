@@ -10,11 +10,6 @@ export const getUtilisation = async () => {
   return response.data;
 };
 
-export const getCoutParKm = async () => {
-  const response = await client.get("/kpis/cout-par-km");
-  return response.data;
-};
-
 export const getNonServies = async () => {
   const response = await client.get("/kpis/non-servies");
   return response.data;

@@ -61,13 +61,13 @@ export default function TourneeDetail() {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Map */}
+        {/* Carte */}
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-3 font-semibold text-gray-900">Itinéraire</h2>
           <MapView markers={markers} routes={routes} className="h-96" />
         </div>
 
-        {/* Stops */}
+        {/* Arrêts */}
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 px-5 py-4">
             <h2 className="font-semibold text-gray-900">Séquence des arrêts</h2>

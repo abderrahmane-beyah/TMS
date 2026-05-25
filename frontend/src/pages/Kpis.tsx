@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getOtd, getUtilisation, getCoutParKm, getNonServies } from '../api/kpis';
+import { getOtd, getUtilisation, getNonServies } from '../api/kpis';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -9,7 +9,6 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 export default function Kpis() {
   const { data: otd, isLoading: loadingOtd } = useQuery({ queryKey: ['kpis-otd'], queryFn: getOtd });
   const { data: utilisation, isLoading: loadingUtil } = useQuery({ queryKey: ['kpis-utilisation'], queryFn: getUtilisation });
-  const { data: cout, isLoading: loadingCout } = useQuery({ queryKey: ['kpis-cout'], queryFn: getCoutParKm });
   const { data: nonServies, isLoading: loadingNS } = useQuery({ queryKey: ['kpis-non-servies'], queryFn: getNonServies });
 
   return (
@@ -43,7 +42,7 @@ export default function Kpis() {
           }
         </div>
 
-        {/* Vehicle utilization */}
+        {/* Utilisation des véhicules */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h3 className="mb-4 font-semibold text-gray-900">Utilisation des véhicules (%)</h3>
           {loadingUtil ? <LoadingSkeleton rows={4} /> :
@@ -66,32 +65,9 @@ export default function Kpis() {
           }
         </div>
 
-        {/* Cost per km */}
+        {/* Commandes non servies par l'optimisation */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold text-gray-900">Coût par km</h3>
-          {loadingCout ? <LoadingSkeleton rows={4} /> :
-            cout && cout.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={cout}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="cout" name="Coût/km (€)" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[280px] items-center justify-center text-gray-400">
-                Aucune donnée disponible
-              </div>
-            )
-          }
-        </div>
-
-        {/* Unserved orders */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold text-gray-900">Commandes non servies par jour</h3>
+          <h3 className="mb-4 font-semibold text-gray-900">Commandes non affectées par l'optimisation</h3>
           {loadingNS ? <LoadingSkeleton rows={4} /> :
             nonServies && nonServies.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>

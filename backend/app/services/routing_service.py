@@ -21,14 +21,14 @@ class RoutingService:
             backend: 'osrm' ou 'google'
         """
         if backend not in ['osrm', 'google']:
-            raise ValueError(f"Invalid routing backend: {backend}. Use 'osrm' or 'google'")
+            raise ValueError(f"Backend de routage invalide : {backend}. Utilisez 'osrm' ou 'google'")
 
         self.backend = backend
         self.osrm_url = getattr(settings, 'OSRM_URL', 'http://router.project-osrm.org')
         self.google_api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', None)
 
         if backend == 'google' and not self.google_api_key:
-            raise ValueError("Google Maps API key not configured. Set GOOGLE_MAPS_API_KEY in .env")
+            raise ValueError("Clé API Google Maps non configurée. Définissez GOOGLE_MAPS_API_KEY dans .env")
 
     def _osrm_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> Tuple[float, float]:
         """
@@ -40,7 +40,7 @@ class RoutingService:
         Raises:
             Exception si le service OSRM échoue ou si l'itinéraire est introuvable
         """
-        # OSRM utilise le format lon,lat
+        # OSRM utilise le format lon,lat (et non lat,lon)
         url = f"{self.osrm_url}/route/v1/driving/{lon1},{lat1};{lon2},{lat2}"
         params = {
             'overview': 'false',
@@ -53,7 +53,7 @@ class RoutingService:
             data = response.json()
 
             if data['code'] != 'Ok':
-                raise ValueError(f"OSRM routing failed: {data.get('message', 'Unknown error')}")
+                raise ValueError(f"Échec du routage OSRM : {data.get('message', 'Erreur inconnue')}")
 
             route = data['routes'][0]
             distance_km = route['distance'] / 1000  # Convertir les mètres en km
@@ -62,9 +62,9 @@ class RoutingService:
             return distance_km, time_seconds
 
         except requests.RequestException as e:
-            raise Exception(f"OSRM service error: {e}. Check OSRM_URL configuration.")
+            raise Exception(f"Erreur du service OSRM : {e}. Vérifiez la configuration OSRM_URL.")
         except (KeyError, IndexError) as e:
-            raise Exception(f"Invalid OSRM response format: {e}")
+            raise Exception(f"Format de réponse OSRM invalide : {e}")
 
     def _google_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> Tuple[float, float]:
         """
@@ -90,11 +90,11 @@ class RoutingService:
             data = response.json()
 
             if data['status'] != 'OK':
-                raise ValueError(f"Google Maps API error: {data['status']}")
+                raise ValueError(f"Erreur API Google Maps : {data['status']}")
 
             element = data['rows'][0]['elements'][0]
             if element['status'] != 'OK':
-                raise ValueError(f"Route not found: {element['status']}")
+                raise ValueError(f"Itinéraire introuvable : {element['status']}")
 
             distance_km = element['distance']['value'] / 1000  # mètres vers km
             time_seconds = element['duration']['value']
@@ -102,9 +102,9 @@ class RoutingService:
             return distance_km, time_seconds
 
         except requests.RequestException as e:
-            raise Exception(f"Google Maps API error: {e}")
+            raise Exception(f"Erreur API Google Maps : {e}")
         except (KeyError, IndexError) as e:
-            raise Exception(f"Invalid Google Maps API response: {e}")
+            raise Exception(f"Réponse API Google Maps invalide : {e}")
 
     def get_distance_and_time(
         self,
@@ -131,7 +131,7 @@ class RoutingService:
         elif self.backend == 'google':
             return self._google_distance(lat1, lon1, lat2, lon2)
         else:
-            raise ValueError(f"Invalid routing backend: {self.backend}")
+            raise ValueError(f"Backend de routage invalide : {self.backend}")
 
     def build_matrix(
         self,

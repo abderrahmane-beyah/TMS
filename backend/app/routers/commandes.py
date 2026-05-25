@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import Optional
 from app.database import get_db
 from app.models.commande import Commande
@@ -14,12 +15,13 @@ router = APIRouter(prefix="/api/v1/commandes", tags=["Commandes"])
 @router.get("/", response_model=list[CommandeResponse])
 async def list_commandes(
     statut: Optional[StatutCommandeEnum] = Query(None),
+    warehouse_id: Optional[int] = Query(None),
     skip: int = Query(0),
     limit: int = Query(100),
     db: AsyncSession = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user)
 ):
-    query = select(Commande)
+    query = select(Commande).options(selectinload(Commande.expediteur))
 
     # L'expéditeur ne voit que ses propres commandes
     if current_user.role == RoleEnum.EXPEDITEUR:
@@ -28,9 +30,24 @@ async def list_commandes(
     if statut:
         query = query.where(Commande.statut == statut)
 
+    if warehouse_id:
+        query = query.where(Commande.warehouse_id == warehouse_id)
+
+    # Ordre par ID décroissant (les plus récentes en premier)
+    query = query.order_by(Commande.id.desc())
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    commandes = result.scalars().all()
+
+    # Ajouter le nom de l'expéditeur à chaque commande
+    response = []
+    for cmd in commandes:
+        cmd_dict = CommandeResponse.model_validate(cmd).model_dump()
+        if hasattr(cmd, 'expediteur') and cmd.expediteur:
+            cmd_dict['expediteur_nom'] = cmd.expediteur.nom
+        response.append(cmd_dict)
+
+    return response
 
 
 @router.post("/", response_model=CommandeResponse, status_code=status.HTTP_201_CREATED)
@@ -52,7 +69,11 @@ async def get_commande(
     db: AsyncSession = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user)
 ):
-    result = await db.execute(select(Commande).where(Commande.id == commande_id))
+    result = await db.execute(
+        select(Commande)
+        .options(selectinload(Commande.expediteur))
+        .where(Commande.id == commande_id)
+    )
     commande = result.scalar_one_or_none()
     if not commande:
         raise HTTPException(status_code=404, detail="Commande introuvable")
@@ -60,7 +81,11 @@ async def get_commande(
     if current_user.role == RoleEnum.EXPEDITEUR and commande.expediteur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Accès non autorisé")
 
-    return commande
+    cmd_dict = CommandeResponse.model_validate(commande).model_dump()
+    if hasattr(commande, 'expediteur') and commande.expediteur:
+        cmd_dict['expediteur_nom'] = commande.expediteur.nom
+
+    return cmd_dict
 
 
 @router.patch("/{commande_id}", response_model=CommandeResponse)

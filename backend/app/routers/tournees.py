@@ -242,6 +242,9 @@ async def confirmer_livraison(
     if current_user.role == RoleEnum.CHAUFFEUR and tournee.chauffeur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Accès non autorisé")
 
+    if tournee.statut != StatutTourneeEnum.EN_COURS:
+        raise HTTPException(status_code=400, detail="La tournée doit être en cours pour confirmer une livraison")
+
     if stop.statut == StatutStopEnum.LIVREE:
         raise HTTPException(status_code=400, detail="Cette livraison a déjà été confirmée")
 

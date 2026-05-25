@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from app.database import get_db
 from app.models.optimisation import TacheOptimisation
-from app.models.enums import RoleEnum, StatutTacheEnum
+from app.models.enums import RoleEnum, StatutTacheEnum, AlgorithmeEnum
 from app.schemas.optimisation import (
     LancerOptimisationRequest,
     TacheLanceeResponse,
@@ -27,7 +27,7 @@ async def lancer_optimisation(
     ),
 ):
     tache = TacheOptimisation(
-        algorithme=payload.algorithme,
+        algorithme=AlgorithmeEnum.OR_TOOLS,
         statut=StatutTacheEnum.EN_ATTENTE,
         progression=0,
         date_execution=datetime.now(timezone.utc),

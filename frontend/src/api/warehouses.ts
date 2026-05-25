@@ -27,11 +27,6 @@ export const getWarehouses = async (): Promise<Warehouse[]> => {
   return response.data;
 };
 
-export const getWarehouse = async (id: number): Promise<Warehouse> => {
-  const response = await client.get(`/warehouses/${id}`);
-  return response.data;
-};
-
 export const createWarehouse = async (data: WarehouseCreate): Promise<Warehouse> => {
   const response = await client.post("/warehouses/", data);
   return response.data;
@@ -40,8 +35,4 @@ export const createWarehouse = async (data: WarehouseCreate): Promise<Warehouse>
 export const updateWarehouse = async (id: number, data: Partial<WarehouseCreate>): Promise<Warehouse> => {
   const response = await client.patch(`/warehouses/${id}`, data);
   return response.data;
-};
-
-export const deleteWarehouse = async (id: number): Promise<void> => {
-  await client.delete(`/warehouses/${id}`);
 };

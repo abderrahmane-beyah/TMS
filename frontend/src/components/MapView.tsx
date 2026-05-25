@@ -48,7 +48,7 @@ function OSRMRoute({ points, color }: { points: [number, number][]; color: strin
   const [routeGeometry, setRouteGeometry] = useState<[number, number][]>(points);
 
   useEffect(() => {
-    // Fetch OSRM route on mount or when points change
+    // Récupère l'itinéraire OSRM au montage ou lors du changement des points
     fetchOSRMRoute(points).then(setRouteGeometry);
   }, [points]);
 

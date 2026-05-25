@@ -50,7 +50,7 @@ export default function Login() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Transport Management System</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Système de Gestion du Transport</h1>
             <p className="mt-1 text-sm text-gray-500">Connectez-vous pour accéder à votre espace</p>
           </div>
 
@@ -65,7 +65,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="exemple@tms.fr"
+                placeholder="exemple@tms.mr"
                 required
               />
             </div>

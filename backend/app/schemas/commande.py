@@ -37,6 +37,7 @@ class CommandeAffecter(BaseModel):
 class CommandeResponse(BaseModel):
     id: int
     expediteur_id: int
+    expediteur_nom: Optional[str] = None
     warehouse_id: Optional[int] = None
     adresse_livraison: str
     lat_livraison: float

@@ -19,14 +19,6 @@ export default function CommandeDetail() {
   if (!commande) return <p className="text-gray-500">Commande introuvable</p>;
 
   const markers: MapMarker[] = [];
-  if (commande.lat_enlevement && commande.lon_enlevement) {
-    markers.push({
-      lat: commande.lat_enlevement,
-      lon: commande.lon_enlevement,
-      statut: 'EN_ATTENTE',
-      popup: `Enlèvement — ${commande.adresse_enlevement}`,
-    });
-  }
   if (commande.lat_livraison && commande.lon_livraison) {
     markers.push({
       lat: commande.lat_livraison,
@@ -38,9 +30,9 @@ export default function CommandeDetail() {
 
   const timelineSteps = [
     { statut: 'EN_ATTENTE', label: 'En attente' },
-    { statut: 'AFFECTÉE', label: 'Affectée' },
+    { statut: 'AFFECTEE', label: 'Affectée' },
     { statut: 'EN_COURS', label: 'En cours' },
-    { statut: 'LIVRÉE', label: 'Livrée' },
+    { statut: 'LIVREE', label: 'Livrée' },
   ];
 
   const currentIdx = timelineSteps.findIndex((s) => s.statut === commande.statut);
@@ -53,7 +45,7 @@ export default function CommandeDetail() {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Details */}
+        {/* Détails */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-gray-900">Détails</h2>
           <dl className="space-y-3">
@@ -62,11 +54,7 @@ export default function CommandeDetail() {
               <dd className="text-sm font-medium text-gray-900">#{commande.expediteur_id}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">Enlèvement</dt>
-              <dd className="text-sm text-gray-900 text-right max-w-[60%]">{commande.adresse_enlevement}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">Livraison</dt>
+              <dt className="text-sm text-gray-500">Adresse de livraison</dt>
               <dd className="text-sm text-gray-900 text-right max-w-[60%]">{commande.adresse_livraison}</dd>
             </div>
             <div className="flex justify-between">
@@ -94,14 +82,14 @@ export default function CommandeDetail() {
           </dl>
         </div>
 
-        {/* Map */}
+        {/* Carte */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-gray-900">Carte</h2>
           <MapView markers={markers} className="h-72" />
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* Chronologie */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="mb-6 font-semibold text-gray-900">Chronologie</h2>
         <div className="flex items-center justify-between">

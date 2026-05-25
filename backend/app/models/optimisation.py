@@ -16,6 +16,7 @@ class TacheOptimisation(Base):
     memory_usage_mb         = Column(Float, nullable=True)  # Utilisation mémoire en MB
     distance_totale         = Column(Float, nullable=True)
     nb_vehicules_utilises   = Column(Integer, nullable=True)
+    nb_commandes_totales    = Column(Integer, nullable=True)  # Nombre total de commandes données au solveur
     nb_commandes_non_servies= Column(Integer, nullable=True)
     date_execution          = Column(DateTime(timezone=True), nullable=True)
     resultat_json           = Column(JSON, nullable=True)

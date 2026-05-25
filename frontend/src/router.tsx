@@ -16,6 +16,7 @@ import Admin from './pages/Admin';
 import ChauffeurDashboard from './pages/ChauffeurDashboard';
 import ChauffeurTournee from './pages/ChauffeurTournee';
 import NotFound from './pages/NotFound';
+import RootRedirect from './pages/RootRedirect';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
@@ -27,7 +28,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <RootRedirect /> },
       {
         path: 'dashboard',
         element: (
@@ -71,7 +72,7 @@ export const router = createBrowserRouter([
       {
         path: 'tournees/:id',
         element: (
-          <ProtectedRoute allowedRoles={['Dispatcheur', 'Administrateur']}>
+          <ProtectedRoute allowedRoles={['Dispatcheur', 'Administrateur', 'Chauffeur']}>
             <TourneeDetail />
           </ProtectedRoute>
         ),

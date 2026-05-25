@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCommandes } from '../api/commandes';
 import { getTournees } from '../api/tournees';
 import { getVehicules } from '../api/vehicules';
+import { getWarehouses } from '../api/warehouses';
 import { lancerOptimisation } from '../api/optimisation';
 import { getOtd } from '../api/kpis';
 import KpiCard from '../components/KpiCard';
@@ -36,6 +37,11 @@ export default function Dashboard() {
     queryFn: () => getVehicules(),
   });
 
+  const { data: warehouses } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => getWarehouses(),
+  });
+
   const { data: otdData } = useQuery({
     queryKey: ['kpis-otd'],
     queryFn: () => getOtd(),
@@ -44,14 +50,19 @@ export default function Dashboard() {
   const { isPolling, isComplete, result: optimResult } = useOptimisationPolling(tacheId);
 
   const launchMutation = useMutation({
-    mutationFn: () =>
-      lancerOptimisation({
-        date: new Date().toISOString().split('T')[0],
+    mutationFn: () => {
+      if (!warehouses || warehouses.length === 0) {
+        throw new Error('Aucun entrepôt disponible');
+      }
+      const today = new Date().toISOString().split('T')[0];
+      return lancerOptimisation({
+        date: today,
+        warehouse_id: warehouses[0].id,
         vehicule_ids: vehicules?.filter((v) => v.statut === 'DISPONIBLE').map((v) => v.id) || [],
         commande_ids:
-          commandes?.filter((c) => c.statut === 'EN_ATTENTE').map((c) => c.id) || [],
-        algorithme: 'HEURISTIQUE',
-      }),
+          commandes?.filter((c) => c.statut === 'EN_ATTENTE' && c.date_livraison === today).map((c) => c.id) || [],
+      });
+    },
     onSuccess: (data) => {
       setTacheId(data.tache_id);
       toast.success('Optimisation lancée');
@@ -59,28 +70,36 @@ export default function Dashboard() {
     onError: () => toast.error("Erreur lors du lancement de l'optimisation"),
   });
 
-  // Build map data from tournees
+  // Construire les données de carte à partir des tournées actives d'aujourd'hui
   const markers: MapMarker[] = [];
   const routes: MapRoute[] = [];
+  const today = new Date().toISOString().split('T')[0];
 
-  tournees?.forEach((t, i) => {
-    if (t.stops && t.stops.length > 0) {
-      const points: [number, number][] = [];
-      t.stops.forEach((stop) => {
-        markers.push({
-          lat: stop.lat,
-          lon: stop.lon,
-          statut: t.statut,
-          popup: `Commande #${stop.commande_id} — ${t.statut}`,
+  tournees
+    ?.filter((t) =>
+      // Seulement les tournées d'aujourd'hui
+      t.date === today &&
+      // Seulement les tournées actives (pas terminées)
+      (t.statut === 'PLANIFIEE' || t.statut === 'EN_COURS')
+    )
+    .forEach((t, i) => {
+      if (t.stops && t.stops.length > 0) {
+        const points: [number, number][] = [];
+        t.stops.forEach((stop) => {
+          markers.push({
+            lat: stop.lat,
+            lon: stop.lon,
+            statut: t.statut,
+            popup: `Commande #${stop.commande_id} — ${t.statut}`,
+          });
+          points.push([stop.lat, stop.lon]);
         });
-        points.push([stop.lat, stop.lon]);
-      });
-      routes.push({ points, color: ROUTE_COLORS[i % ROUTE_COLORS.length] });
-    }
-  });
+        routes.push({ points, color: ROUTE_COLORS[i % ROUTE_COLORS.length] });
+      }
+    });
 
   const totalCommandes = commandes?.length ?? 0;
-  const tourneesActives = tournees?.filter((t) => t.statut === 'EN_COURS').length ?? 0;
+  const tourneesActives = tournees?.filter((t) => t.date === today && t.statut === 'EN_COURS').length ?? 0;
   const vehiculesDisponibles = vehicules?.filter((v) => v.statut === 'DISPONIBLE').length ?? 0;
   const latestOtd = otdData && otdData.length > 0 ? otdData[otdData.length - 1].taux : 0;
 
@@ -110,7 +129,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* KPI Cards */}
+      {/* Cartes KPI */}
       {loadingCommandes ? (
         <LoadingSkeleton type="card" />
       ) : (
@@ -158,7 +177,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Optimisation result banner */}
+      {/* Bannière de résultat d'optimisation */}
       {isComplete && optimResult && (
         <div className="mb-8 rounded-xl border border-green-200 bg-green-50 p-4">
           <h3 className="font-medium text-green-800">Optimisation terminée</h3>
@@ -170,7 +189,7 @@ export default function Dashboard() {
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Orders table */}
+        {/* Tableau des commandes */}
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 px-5 py-4">
             <h2 className="font-semibold text-gray-900">Commandes récentes</h2>
@@ -183,7 +202,7 @@ export default function Dashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Expediteur</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Expéditeur ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Statut</th>
                   </tr>
                 </thead>
@@ -205,7 +224,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Active tournees */}
+        {/* Tournées actives */}
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 px-5 py-4">
             <h2 className="font-semibold text-gray-900">Tournées actives</h2>
@@ -214,7 +233,7 @@ export default function Dashboard() {
             <div className="p-5"><LoadingSkeleton rows={4} /></div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {tournees?.filter((t) => ['EN_COURS', 'PLANIFIÉE'].includes(t.statut)).slice(0, 6).map((t) => (
+              {tournees?.filter((t) => ['EN_COURS', 'PLANIFIEE'].includes(t.statut)).slice(0, 6).map((t) => (
                 <div
                   key={t.id}
                   onClick={() => navigate(`/tournees/${t.id}`)}
@@ -240,10 +259,26 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Map */}
+      {/* Carte */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-4 font-semibold text-gray-900">Carte des tournées actives</h2>
-        <MapView markers={markers} routes={routes} className="h-96" />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Carte des tournées actives</h2>
+          <div className="flex items-center gap-2">
+            {markers.length > 0 && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                {markers.length} arrêt{markers.length > 1 ? 's' : ''}
+              </span>
+            )}
+            <span className="text-xs text-gray-500">Aujourd'hui • {today}</span>
+          </div>
+        </div>
+        <MapView
+          markers={markers}
+          routes={routes}
+          center={[21, -11]}  // Centre de la Mauritanie
+          zoom={6}
+          className="h-96"
+        />
       </div>
     </div>
   );

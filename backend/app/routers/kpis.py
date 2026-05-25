@@ -57,46 +57,29 @@ async def utilisation(
 
     return data
 
-@router.get("/cout-par-km")
-async def cout_par_km(
-    db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role(RoleEnum.DISPATCHEUR, RoleEnum.ADMINISTRATEUR))
-):
-    today = date.today()
-    last_30 = today - timedelta(days=30)
-    result = await db.execute(
-        select(Tournee).where(
-            Tournee.date >= last_30,
-            Tournee.distance_totale != None
-        )
-    )
-    tournees = result.scalars().all()
-
-    COUT_PAR_KM = 0.15  
-    data = []
-    for t in tournees:
-        cout = round(t.distance_totale * COUT_PAR_KM, 2) if t.distance_totale else 0
-        data.append({"date": str(t.date), "cout": cout})
-
-    return data
-
 @router.get("/non-servies")
 async def non_servies(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role(RoleEnum.DISPATCHEUR, RoleEnum.ADMINISTRATEUR))
 ):
+    """
+    Commandes non affectées par l'optimisation : commandes avec le statut NON_AFFECTEE.
+    """
+    from app.models.enums import StatutCommandeEnum
     today = date.today()
     last_30 = today - timedelta(days=30)
+
     result = await db.execute(
-        select(Commande).where(Commande.created_at >= last_30)
+        select(Commande).where(
+            Commande.date_livraison >= last_30,
+            Commande.statut == StatutCommandeEnum.NON_AFFECTEE
+        )
     )
     commandes = result.scalars().all()
 
     from collections import defaultdict
     daily = defaultdict(int)
     for c in commandes:
-        day = str(c.created_at.date())
-        if c.statut.value != "LIVREE":
-            daily[day] += 1
+        daily[str(c.date_livraison)] += 1
 
     return [{"date": d, "count": n} for d, n in sorted(daily.items())]

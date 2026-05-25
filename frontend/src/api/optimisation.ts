@@ -43,7 +43,6 @@ export interface OptimisationHistoryItem {
 
 export const lancerOptimisation = async (data: {
   warehouse_id: number;
-  algorithme: "HEURISTIQUE" | "OR_TOOLS";
   commande_ids: number[];
   vehicule_ids: number[];
   date: string;

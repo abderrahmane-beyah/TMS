@@ -35,7 +35,7 @@ export default function Anomalies() {
       header: 'Actions',
       render: (row) => (
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          {row.statut !== 'RÉSOLUE' && (
+          {row.statut !== 'RESOLUE' && (
             <button
               onClick={() => resolveMutation.mutate(row.id)}
               disabled={resolveMutation.isPending}

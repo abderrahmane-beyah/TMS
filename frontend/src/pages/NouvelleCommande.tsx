@@ -1,12 +1,13 @@
 import { useState, useCallback, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { createCommande } from '../api/commandes';
+import { getWarehouses } from '../api/warehouses';
 import { useGeocoding } from '../hooks/useGeocoding';
 import toast from 'react-hot-toast';
 
 interface FieldErrors {
-  adresse_enlevement?: string;
+  warehouse_id?: string;
   adresse_livraison?: string;
   poids?: string;
   volume?: string;
@@ -19,25 +20,27 @@ export default function NouvelleCommande() {
   const navigate = useNavigate();
   const { geocode, loading: geocoding } = useGeocoding();
 
+  const { data: warehouses } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: getWarehouses,
+  });
+
   const [form, setForm] = useState({
-    adresse_enlevement: '',
+    warehouse_id: '',
     adresse_livraison: '',
-    lat_enlevement: 0,
-    lon_enlevement: 0,
     lat_livraison: 0,
     lon_livraison: 0,
     poids: '',
     volume: '',
+    type_vehicule_requis: '',
     date_livraison: '',
     heure_ouverture: '',
     heure_fermeture: '',
   });
 
   const [geocodeStatus, setGeocodeStatus] = useState<{
-    pickup: { status: 'idle' | 'loading' | 'success' | 'error'; text: string };
     delivery: { status: 'idle' | 'loading' | 'success' | 'error'; text: string };
   }>({
-    pickup: { status: 'idle', text: '' },
     delivery: { status: 'idle', text: '' },
   });
 
@@ -52,20 +55,6 @@ export default function NouvelleCommande() {
     },
     onError: () => toast.error('Erreur lors de la création'),
   });
-
-  const handleGeocodePickup = useCallback(async () => {
-    if (form.adresse_enlevement.length < 5) return;
-    setGeocodeStatus((s) => ({ ...s, pickup: { status: 'loading', text: 'Résolution...' } }));
-    const result = await geocode(form.adresse_enlevement);
-    if (result) {
-      setForm((f) => ({ ...f, lat_enlevement: result.lat, lon_enlevement: result.lon }));
-      setGeocodeStatus((s) => ({ ...s, pickup: { status: 'success', text: `${result.lat.toFixed(4)}, ${result.lon.toFixed(4)}` } }));
-      setErrors((e) => ({ ...e, adresse_enlevement: undefined }));
-    } else {
-      setForm((f) => ({ ...f, lat_enlevement: 0, lon_enlevement: 0 }));
-      setGeocodeStatus((s) => ({ ...s, pickup: { status: 'error', text: 'Adresse non trouvée' } }));
-    }
-  }, [form.adresse_enlevement, geocode]);
 
   const handleGeocodeDelivery = useCallback(async () => {
     if (form.adresse_livraison.length < 5) return;
@@ -83,8 +72,7 @@ export default function NouvelleCommande() {
 
   const validate = (): FieldErrors => {
     const e: FieldErrors = {};
-    if (!form.adresse_enlevement.trim()) e.adresse_enlevement = "L'adresse d'enlèvement est requise";
-    else if (!form.lat_enlevement) e.adresse_enlevement = "L'adresse n'a pas pu être géocodée";
+    if (!form.warehouse_id) e.warehouse_id = "L'entrepôt est requis";
     if (!form.adresse_livraison.trim()) e.adresse_livraison = "L'adresse de livraison est requise";
     else if (!form.lat_livraison) e.adresse_livraison = "L'adresse n'a pas pu être géocodée";
     if (!form.poids) e.poids = 'Le poids est requis';
@@ -104,13 +92,20 @@ export default function NouvelleCommande() {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
-    // Mark all as touched
-    setTouched({ adresse_enlevement: true, adresse_livraison: true, poids: true, volume: true, date_livraison: true, heure_ouverture: true, heure_fermeture: true });
+    // Marquer tous les champs comme touchés
+    setTouched({ warehouse_id: true, adresse_livraison: true, poids: true, volume: true, date_livraison: true, heure_ouverture: true, heure_fermeture: true });
     if (Object.keys(validationErrors).length > 0) return;
     mutation.mutate({
-      ...form,
+      warehouse_id: parseInt(form.warehouse_id),
+      adresse_livraison: form.adresse_livraison,
+      lat_livraison: form.lat_livraison,
+      lon_livraison: form.lon_livraison,
       poids: parseFloat(form.poids),
       volume: parseFloat(form.volume),
+      type_vehicule_requis: form.type_vehicule_requis ? (form.type_vehicule_requis as 'NORMAL' | 'REFRIGERE' | 'CONGELATEUR') : undefined,
+      date_livraison: form.date_livraison,
+      heure_ouverture: form.heure_ouverture,
+      heure_fermeture: form.heure_fermeture,
     });
   };
 
@@ -123,7 +118,7 @@ export default function NouvelleCommande() {
         : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
     }`;
 
-  const geocodeStatusColor = (s: typeof geocodeStatus.pickup) => {
+  const geocodeStatusColor = (s: typeof geocodeStatus.delivery) => {
     if (s.status === 'loading') return 'text-gray-500';
     if (s.status === 'success') return 'text-green-600';
     if (s.status === 'error') return 'text-red-500';
@@ -138,37 +133,28 @@ export default function NouvelleCommande() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm" noValidate>
-        {/* Pickup address */}
+        {/* Sélection de l'entrepôt */}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Adresse d'enlèvement</label>
-          <input
-            type="text"
-            value={form.adresse_enlevement}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, adresse_enlevement: e.target.value, lat_enlevement: 0, lon_enlevement: 0 }));
-              setGeocodeStatus((s) => ({ ...s, pickup: { status: 'idle', text: '' } }));
-            }}
-            onBlur={() => { markTouched('adresse_enlevement'); handleGeocodePickup(); }}
-            className={inputCls('adresse_enlevement')}
-            placeholder="Avenue Gamal Abdel Nasser, Nouakchott"
-          />
-          {geocodeStatus.pickup.text && (
-            <p className={`mt-1 flex items-center gap-1 text-xs ${geocodeStatusColor(geocodeStatus.pickup)}`}>
-              {geocodeStatus.pickup.status === 'loading' && (
-                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              )}
-              {geocodeStatus.pickup.text}
-            </p>
-          )}
-          {touched.adresse_enlevement && errors.adresse_enlevement && !geocodeStatus.pickup.text && (
-            <p className="mt-1 text-xs text-red-500">{errors.adresse_enlevement}</p>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">Entrepôt d'enlèvement</label>
+          <select
+            value={form.warehouse_id}
+            onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+            onBlur={() => markTouched('warehouse_id')}
+            className={inputCls('warehouse_id')}
+          >
+            <option value="">Sélectionner un entrepôt...</option>
+            {warehouses?.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.nom} - {w.ville}
+              </option>
+            ))}
+          </select>
+          {touched.warehouse_id && errors.warehouse_id && (
+            <p className="mt-1 text-xs text-red-500">{errors.warehouse_id}</p>
           )}
         </div>
 
-        {/* Delivery address */}
+        {/* Adresse de livraison */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Adresse de livraison</label>
           <input
@@ -198,8 +184,8 @@ export default function NouvelleCommande() {
           )}
         </div>
 
-        {/* Weight + Volume */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Poids + Volume + Type de véhicule */}
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Poids (kg)</label>
             <input
@@ -226,9 +212,23 @@ export default function NouvelleCommande() {
             />
             {touched.volume && errors.volume && <p className="mt-1 text-xs text-red-500">{errors.volume}</p>}
           </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Type de véhicule</label>
+            <select
+              value={form.type_vehicule_requis}
+              onChange={(e) => setForm((f) => ({ ...f, type_vehicule_requis: e.target.value }))}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-1 focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value=""></option>
+              <option value="NORMAL"> Normal</option>
+              <option value="REFRIGERE"> Réfrigéré</option>
+              <option value="CONGELATEUR"> Congélateur</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Laisser vide = NORMAL</p>
+          </div>
         </div>
 
-        {/* Delivery date + Time window */}
+        {/* Date de livraison + Fenêtre horaire */}
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Date de livraison</label>

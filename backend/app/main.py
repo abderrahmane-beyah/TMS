@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, commandes, vehicules, chauffeurs, tournees, anomalies, kpis, admin, warehouses
-from app.routers import optimisation as optimisation_router  # ✅ Solvers are now implemented!
+from app.routers import optimisation as optimisation_router  # Solvers are now implemented!
 from app.models import *
 
 app = FastAPI(title="TMS API", version="1.0.0")

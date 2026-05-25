@@ -12,14 +12,6 @@ import os
 ALPHA = 10000.0  # Coût par véhicule utilisé (valeur élevée = minimiser le nombre de véhicules)
 BETA = 1.0       # Coût par kilomètre parcouru
 
-# ========== Paramètres Heuristique Solomon I1 ==========
-# Calcul du coût d'insertion : coût = ALPHA1 * c1 + ALPHA2 * c2
-# Basé sur : Solomon, M. M. (1987). Operations Research, 35(2), 254-265
-
-SOLOMON_ALPHA1 = 1.0   # Poids du coût de distance dans l'insertion
-SOLOMON_ALPHA2 = 0.1   # Poids du coût d'urgence de fenêtre temporelle
-SOLOMON_MU = 1.0       # Facteur de pénalité de détour (0 à 1)
-
 celery_app = Celery(
     "tms",
     broker=settings.CELERY_BROKER_URL,
@@ -264,7 +256,6 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
     from app.models.tournee import Tournee, StopTournee
     from app.models.enums import StatutTacheEnum, AlgorithmeEnum, StatutTourneeEnum, StatutStopEnum, StatutCommandeEnum
     from app.solver.ortools_solver import ORToolsVRPTWSolver
-    from app.solver.heuristic_solver import HeuristicVRPTWSolver
     from datetime import datetime, timezone, date
     import time as time_module
 
@@ -299,7 +290,8 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                 Commande.id.in_(commande_ids),
                 Commande.statut.in_([
                     StatutCommandeEnum.EN_ATTENTE,
-                    StatutCommandeEnum.AFFECTEE  # Permettre la ré-optimisation des commandes affectées
+                    StatutCommandeEnum.AFFECTEE,      # Permettre la ré-optimisation des commandes affectées
+                    StatutCommandeEnum.NON_AFFECTEE   # Permettre la ré-optimisation des commandes non affectées
                 ])
             ).all()
             if not commandes:
@@ -415,7 +407,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             tache.progression = 40
             db.commit()
 
-            # Sélectionner le solveur en fonction de l'algorithme et suivre les ressources
+            # Suivre les ressources
             process = psutil.Process(os.getpid())
 
             # Capturer l'état initial
@@ -423,43 +415,30 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             start_cpu_times = process.cpu_times()
             start_memory = process.memory_info().rss / 1024 / 1024  # Mo
 
-            if tache.algorithme == AlgorithmeEnum.OR_TOOLS:
-                # Limite de temps dynamique basée sur la taille du problème
-                # Petits problèmes (< 20 commandes): 30s
-                # Problèmes moyens (20-50 commandes): 60s
-                # Grands problèmes (> 50 commandes): 120s
-                num_commandes = len(commandes_data)
-                if num_commandes < 20:
-                    time_limit = 30
-                elif num_commandes < 50:
-                    time_limit = 60
-                else:
-                    time_limit = 120
+            # Limite de temps dynamique basée sur la taille du problème
+            # Petits problèmes (< 20 commandes): 30s
+            # Problèmes moyens (20-50 commandes): 60s
+            # Grands problèmes (> 50 commandes): 120s
+            num_commandes = len(commandes_data)
+            if num_commandes < 20:
+                time_limit = 30
+            elif num_commandes < 50:
+                time_limit = 60
+            else:
+                time_limit = 120
 
-                print(f"[INFO] Utilisation d'une limite de temps de {time_limit}s pour {num_commandes} commandes")
+            print(f"[INFO] Utilisation d'une limite de temps de {time_limit}s pour {num_commandes} commandes")
 
-                # Essayer l'optimisation multi-trajets pour les grands problèmes
-                solution = _run_multi_trip_optimization(
-                    commandes_data,
-                    vehicules_data,
-                    depot_lat,
-                    depot_lon,
-                    time_limit,
-                    date_str,
-                    db
-                )
-            else:  # HEURISTIQUE (Solomon I1 avec améliorations)
-                solver = HeuristicVRPTWSolver(
-                    commandes_data,
-                    vehicules_data,
-                    depot_lat=depot_lat,
-                    depot_lon=depot_lon,
-                    alpha1=SOLOMON_ALPHA1,
-                    alpha2=SOLOMON_ALPHA2,
-                    mu=SOLOMON_MU
-                )
-                # Utiliser multi-démarrage avec insertion basée sur le regret pour de meilleurs résultats
-                solution = solver.solve(multi_start=True)
+            # Optimisation multi-trajets OR-Tools
+            solution = _run_multi_trip_optimization(
+                commandes_data,
+                vehicules_data,
+                depot_lat,
+                depot_lon,
+                time_limit,
+                date_str,
+                db
+            )
 
             # Capturer l'état final et calculer l'usage des ressources
             end_time = time_module.time()
@@ -574,6 +553,17 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                         commande.vehicule_id = tournee.vehicule_id
                         commande.chauffeur_id = tournee.chauffeur_id
 
+            # Marquer les commandes non servies avec le statut NON_AFFECTEE
+            unserved_commandes = solution.get('commandes_non_servies', [])
+            if unserved_commandes:
+                print(f"[INFO] Marquage de {len(unserved_commandes)} commandes comme NON_AFFECTEE")
+                for unserved in unserved_commandes:
+                    commande = db.query(Commande).filter(Commande.id == unserved['commande_id']).first()
+                    if commande:
+                        commande.statut = StatutCommandeEnum.NON_AFFECTEE
+                        commande.vehicule_id = None
+                        commande.chauffeur_id = None
+
             tache.progression = 90
             db.commit()
 
@@ -582,6 +572,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             tache.progression = 100
             tache.distance_totale = solution['distance_totale']
             tache.nb_vehicules_utilises = solution['nb_vehicules_utilises']
+            tache.nb_commandes_totales = len(commandes_data)
             tache.nb_commandes_non_servies = solution['nb_commandes_non_servies']
             tache.resultat_json = solution
             tache.temps_execution = temps_execution

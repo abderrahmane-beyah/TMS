@@ -10,7 +10,7 @@ export interface Stop {
   heure_arrivee_prevue?: string;
   heure_arrivee_reelle?: string;
   statut: string;
-  commande_statut?: string; // Status of the associated commande (can be ANNULEE)
+  commande_statut?: string; // Statut de la commande associée (peut être ANNULEE)
 }
 
 export interface Tournee {

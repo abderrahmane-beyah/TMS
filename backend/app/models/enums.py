@@ -12,6 +12,7 @@ class StatutCommandeEnum(str, enum.Enum):
     EN_COURS = "EN_COURS"
     LIVREE = "LIVREE"
     ANNULEE = "ANNULEE"  # Commande annulée (non supprimée, juste marquée comme annulée)
+    NON_AFFECTEE = "NON_AFFECTEE"  # Commande non affectée par l'optimisation (ne peut pas être servie)
 
 class StatutTourneeEnum(str, enum.Enum):
     PLANIFIEE = "PLANIFIEE"
@@ -44,7 +45,6 @@ class StatutAnomalieEnum(str, enum.Enum):
     RESOLUE = "RESOLUE"
 
 class AlgorithmeEnum(str, enum.Enum):
-    HEURISTIQUE = "HEURISTIQUE"
     OR_TOOLS = "OR_TOOLS"
 
 class StatutTacheEnum(str, enum.Enum):

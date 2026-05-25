@@ -5,7 +5,6 @@ from app.models.enums import AlgorithmeEnum, StatutTacheEnum
 
 
 class LancerOptimisationRequest(BaseModel):
-    algorithme: AlgorithmeEnum
     warehouse_id: int
     commande_ids: list[int]
     vehicule_ids: list[int]
@@ -32,6 +31,7 @@ class TacheResultatResponse(BaseModel):
     progression: int
     distance_totale: Optional[float] = None
     nb_vehicules_utilises: Optional[int] = None
+    nb_commandes_totales: Optional[int] = None
     nb_commandes_non_servies: Optional[int] = None
     resultat_json: Optional[Any] = None
     temps_execution: Optional[float] = None
@@ -39,6 +39,14 @@ class TacheResultatResponse(BaseModel):
     memory_usage_mb: Optional[float] = None    # Utilisation mémoire en MB
     date_execution: Optional[datetime] = None
     created_at: datetime
+
+    @computed_field
+    @property
+    def nb_commandes_servies(self) -> Optional[int]:
+        """Nombre de commandes servies = total - non servies"""
+        if self.nb_commandes_totales is not None and self.nb_commandes_non_servies is not None:
+            return self.nb_commandes_totales - self.nb_commandes_non_servies
+        return None
 
     @computed_field
     @property

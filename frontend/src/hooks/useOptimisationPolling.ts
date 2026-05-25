@@ -8,7 +8,8 @@ export function useOptimisationPolling(tacheId: number | null) {
     queryFn: () => getOptimisationStatut(tacheId!),
     enabled: tacheId !== null,
     refetchInterval: (query) => {
-      if (query.state.data?.statut === 'EN_COURS') return 3000;
+      const status = query.state.data?.statut;
+      if (status === 'EN_ATTENTE' || status === 'EN_COURS') return 3000;
       return false;
     },
   });
@@ -16,14 +17,14 @@ export function useOptimisationPolling(tacheId: number | null) {
   const result = useQuery<OptimisationResult>({
     queryKey: ['optimisation-result', tacheId],
     queryFn: () => getOptimisationResult(tacheId!),
-    enabled: tacheId !== null && statut.data?.statut === 'TERMINÉE',
+    enabled: tacheId !== null && (statut.data?.statut === 'TERMINEE' || statut.data?.statut === 'ERREUR'),
   });
 
   return {
     statut: statut.data,
     result: result.data,
-    isPolling: statut.data?.statut === 'EN_COURS',
-    isComplete: statut.data?.statut === 'TERMINÉE',
-    isError: statut.isError || result.isError,
+    isPolling: statut.data?.statut === 'EN_ATTENTE' || statut.data?.statut === 'EN_COURS',
+    isComplete: statut.data?.statut === 'TERMINEE',
+    isError: statut.data?.statut === 'ERREUR' || statut.isError || result.isError,
   };
 }
