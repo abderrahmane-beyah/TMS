@@ -58,7 +58,6 @@ databases:
   # PostgreSQL 
   - name: tms-db
     databaseName: tms_db
-    user: postgres
     plan: free
 
   # Redis 
