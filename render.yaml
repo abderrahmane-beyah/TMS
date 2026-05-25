@@ -51,7 +51,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://tms-backend.onrender.com/api/v1
+        value: https://tms-backend-tbi8.onrender.com/api/v1
 
 databases:
   # PostgreSQL 
