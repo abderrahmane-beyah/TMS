@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     REDIS_URL: str = "redis://localhost:6379/0"
-    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    # Celery uses Redis - will be set from Render or fallback to REDIS_URL
+    CELERY_BROKER_URL: str = ""
 
     # Configuration du service de routage
     ROUTING_BACKEND: str = "osrm"  # 'osrm'
@@ -34,6 +35,10 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    # Fallback: use REDIS_URL for Celery if CELERY_BROKER_URL not explicitly set
+    if not s.CELERY_BROKER_URL:
+        s.CELERY_BROKER_URL = s.REDIS_URL
+    return s
 
 settings = get_settings()
