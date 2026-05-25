@@ -29,6 +29,29 @@ async def create_anomalie(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
+    # Valider que la tournée existe
+    from app.models.tournee import Tournee, StopTournee
+    tournee_result = await db.execute(
+        select(Tournee).where(Tournee.id == payload.tournee_id)
+    )
+    tournee = tournee_result.scalar_one_or_none()
+    if not tournee:
+        raise HTTPException(status_code=404, detail=f"Tournée #{payload.tournee_id} introuvable")
+
+    # Si stop_id est fourni, valider qu'il existe et appartient à la tournée
+    if payload.stop_id is not None:
+        stop_result = await db.execute(
+            select(StopTournee).where(StopTournee.id == payload.stop_id)
+        )
+        stop = stop_result.scalar_one_or_none()
+        if not stop:
+            raise HTTPException(status_code=404, detail=f"Arrêt #{payload.stop_id} introuvable")
+        if stop.tournee_id != payload.tournee_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"L'arrêt #{payload.stop_id} n'appartient pas à la tournée #{payload.tournee_id}"
+            )
+
     anomalie = Anomalie(**payload.model_dump())
     db.add(anomalie)
     await db.commit()

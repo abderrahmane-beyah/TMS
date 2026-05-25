@@ -13,6 +13,7 @@ export default function Admin() {
   const [editing, setEditing] = useState<User | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: users, isLoading } = useQuery({ queryKey: ['users'], queryFn: getUsers });
 
@@ -34,6 +35,17 @@ export default function Admin() {
     onError: () => toast.error('Erreur'),
   });
 
+  // Filtrer les utilisateurs selon le terme de recherche
+  const filteredUsers = users?.filter((u) => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      u.nom.toLowerCase().includes(search) ||
+      u.email.toLowerCase().includes(search) ||
+      u.role.toLowerCase().includes(search)
+    );
+  });
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -47,6 +59,47 @@ export default function Admin() {
         >
           + Nouvel utilisateur
         </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Rechercher par nom, email ou rôle..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <svg
+            className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="mt-2 text-sm text-gray-600">
+            {filteredUsers?.length || 0} résultat(s) trouvé(s)
+          </p>
+        )}
       </div>
 
       {(showForm || editing) && (
@@ -74,29 +127,37 @@ export default function Admin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {users?.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.nom}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{u.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{u.role}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge statut={u.actif ? 'DISPONIBLE' : 'HORS_SERVICE'} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => setEditing(u)} className="text-sm text-blue-600 hover:underline">
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => u.actif ? setConfirmDeactivate(u) : toggleActifMutation.mutate(u.id)}
-                        className={`text-sm hover:underline ${u.actif ? 'text-red-600' : 'text-green-600'}`}
-                      >
-                        {u.actif ? 'Désactiver' : 'Activer'}
-                      </button>
-                    </div>
+              {filteredUsers && filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                    Aucun utilisateur trouvé
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredUsers?.map((u) => (
+                  <tr key={u.id}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.nom}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{u.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{u.role}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge statut={u.actif ? 'DISPONIBLE' : 'HORS_SERVICE'} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditing(u)} className="text-sm text-blue-600 hover:underline">
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => u.actif ? setConfirmDeactivate(u) : toggleActifMutation.mutate(u.id)}
+                          className={`text-sm hover:underline ${u.actif ? 'text-red-600' : 'text-green-600'}`}
+                        >
+                          {u.actif ? 'Désactiver' : 'Activer'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

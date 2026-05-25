@@ -56,5 +56,28 @@ async def delete_vehicule(
     vehicule = result.scalar_one_or_none()
     if not vehicule:
         raise HTTPException(status_code=404, detail="Véhicule introuvable")
+
+    # Vérifier les références avant suppression
+    from app.models.tournee import Tournee
+    from app.models.commande import Commande
+
+    tournees_result = await db.execute(
+        select(Tournee).where(Tournee.vehicule_id == vehicule_id).limit(1)
+    )
+    if tournees_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="Impossible de supprimer : ce véhicule est référencé dans des tournées"
+        )
+
+    commandes_result = await db.execute(
+        select(Commande).where(Commande.vehicule_id == vehicule_id).limit(1)
+    )
+    if commandes_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="Impossible de supprimer : ce véhicule est affecté à des commandes"
+        )
+
     await db.delete(vehicule)
     await db.commit()

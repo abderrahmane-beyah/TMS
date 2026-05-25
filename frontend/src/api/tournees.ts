@@ -20,6 +20,7 @@ export interface Tournee {
   progression: number;
   statut: string;
   heure_depart?: string;
+  heure_retour_depot?: string;  // Heure de retour prévue au dépôt
   depot_lat?: number;
   depot_lon?: number;
   warehouse_id?: number;

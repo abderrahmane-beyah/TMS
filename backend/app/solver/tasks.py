@@ -305,6 +305,14 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                     f"{len(invalid_dates)} commande(s) ont des dates différentes."
                 )
 
+            # Valider que toutes les commandes appartiennent au même entrepôt
+            invalid_warehouse_commandes = [c for c in commandes if c.warehouse_id != warehouse_id]
+            if invalid_warehouse_commandes:
+                raise ValueError(
+                    f"Toutes les commandes doivent appartenir à l'entrepôt #{warehouse_id}. "
+                    f"{len(invalid_warehouse_commandes)} commande(s) appartiennent à d'autres entrepôts."
+                )
+
             # Vérifier si ré-optimisation: des tournées existent déjà pour cette date?
             existing_tournees = db.query(Tournee).filter(
                 Tournee.date == date_execution,
@@ -338,6 +346,14 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             vehicules = db.query(Vehicule).filter(Vehicule.id.in_(vehicule_ids)).all()
             if not vehicules:
                 raise ValueError("Aucun véhicule trouvé")
+
+            # Valider que tous les véhicules appartiennent au même entrepôt
+            invalid_warehouse_vehicules = [v for v in vehicules if v.warehouse_id != warehouse_id]
+            if invalid_warehouse_vehicules:
+                raise ValueError(
+                    f"Tous les véhicules doivent appartenir à l'entrepôt #{warehouse_id}. "
+                    f"{len(invalid_warehouse_vehicules)} véhicule(s) appartiennent à d'autres entrepôts."
+                )
 
             tache.progression = 30
             db.commit()
@@ -510,6 +526,14 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                     )
                     heure_depart_prevue = heure_depart_prevue.replace(tzinfo=timezone.utc)
 
+                # Analyser l'heure de retour au dépôt si disponible
+                heure_retour_depot = None
+                if 'heure_retour_depot' in tournee_data:
+                    heure_retour_depot = datetime.strptime(
+                        f"{date_str} {tournee_data['heure_retour_depot']}", "%Y-%m-%d %H:%M:%S"
+                    )
+                    heure_retour_depot = heure_retour_depot.replace(tzinfo=timezone.utc)
+
                 tournee = Tournee(
                     vehicule_id=tournee_data['vehicule_id'],
                     chauffeur_id=assigned_chauffeur.id,
@@ -517,6 +541,7 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                     statut=StatutTourneeEnum.PLANIFIEE,
                     distance_totale=tournee_data['distance'],
                     heure_depart=heure_depart_prevue,  # Heure de départ prévue du solveur
+                    heure_retour_depot=heure_retour_depot,  # Heure de retour prévue au dépôt
                     depot_lat=depot_lat,  # Stocker les coordonnées de l'entrepôt comme dépôt
                     depot_lon=depot_lon,
                     warehouse_id=warehouse_id,

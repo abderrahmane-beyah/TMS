@@ -1,10 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.routers import auth, commandes, vehicules, chauffeurs, tournees, anomalies, kpis, admin, warehouses
 from app.routers import optimisation as optimisation_router  # Solvers are now implemented!
 from app.models import *
 
 app = FastAPI(title="TMS API", version="1.0.0")
+
+# Compression pour réduire l'utilisation de bande passante
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,

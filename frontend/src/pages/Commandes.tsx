@@ -43,7 +43,7 @@ export default function Commandes() {
     text: string;
   }>({ status: 'idle', text: '' });
 
-  const ITEMS_PER_PAGE = 100; // Increased to show more commandes
+  const ITEMS_PER_PAGE = 100; // Augmenté pour afficher plus de commandes
 
   const { data, isLoading } = useQuery({
     queryKey: ['commandes', { page, statut: statutFilter, warehouse_id: warehouseFilter }],
@@ -288,7 +288,7 @@ export default function Commandes() {
         </div>
 
         {/* Bouton pour afficher les commandes non servies par l'optimisation */}
-        {(role === 'Dispatcheur' || role === 'Administrateur') && (
+        {(role === 'Dispatcheur' || role === 'Administrateur' || role === 'Expediteur') && (
           <button
             onClick={() => {
               setShowUnserved(!showUnserved);

@@ -10,7 +10,7 @@ Avant de lancer l'application, assurez-vous d'avoir installé :
 
 - Python 3.12
 - Node.js 18+
-- Docker Desktop (pour PostgreSQL et Redis)
+- Docker Desktop (pour PostgreSQL, Redis et OSRM)
 
 ---
 
@@ -23,15 +23,39 @@ git clone https://github.com/abderrahmane-beyah/TMS.git
 cd TMS
 ```
 
-### 2. Démarrer la base de données et Redis
+### 2. Configurer OSRM (routing)
 
-Démarrez Docker Desktop, puis lancez :
+OSRM est requis pour calculer les distances et temps de route réels.
 
 ```bash
+cd backend
+
+# Télécharger les données OSM de Mauritanie (~29MB)
+wget https://download.geofabrik.de/africa/mauritania-latest.osm.pbf
+
+# Traiter les données (MLD)
+docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend \
+  osrm-extract -p /opt/car.lua /data/mauritania-latest.osrm.pbf
+
+docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend \
+  osrm-partition /data/mauritania-latest.osrm
+
+docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend \
+  osrm-customize /data/mauritania-latest.osrm
+```
+
+> **Note :** Cette étape n'est nécessaire qu'une seule fois. Les fichiers OSRM seront réutilisés.
+
+### 3. Démarrer les services Docker
+
+Démarrez Docker Desktop, puis lancez PostgreSQL, Redis et OSRM :
+
+```bash
+cd backend
 docker-compose up -d
 ```
 
-### 3. Configurer et démarrer le backend
+### 4. Configurer et démarrer le backend
 
 #### Créer l'environnement virtuel Python
 
@@ -59,6 +83,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+#### Initialiser la base de données
+
+```bash
+# Appliquer les migrations
+alembic upgrade head
+
+```
+
 #### Lancer le serveur backend
 
 ```bash
@@ -68,7 +100,7 @@ uvicorn app.main:app --reload
 Le backend est accessible sur : `http://localhost:8000`
 Documentation API : `http://localhost:8000/api/v1/docs`
 
-### 4. Démarrer le worker Celery (optimisation)
+### 5. Démarrer le worker Celery (optimisation)
 
 Ouvrez un nouveau terminal dans le dossier `backend` :
 
@@ -87,7 +119,7 @@ celery -A app.solver.tasks.celery_app worker --loglevel=info --pool=solo
 ```
 
 
-### 5. Démarrer le frontend
+### 6. Démarrer le frontend
 
 Ouvrez un nouveau terminal :
 

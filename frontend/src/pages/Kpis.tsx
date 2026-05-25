@@ -68,6 +68,7 @@ export default function Kpis() {
         {/* Commandes non servies par l'optimisation */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h3 className="mb-4 font-semibold text-gray-900">Commandes non affectées par l'optimisation</h3>
+
           {loadingNS ? <LoadingSkeleton rows={4} /> :
             nonServies && nonServies.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>

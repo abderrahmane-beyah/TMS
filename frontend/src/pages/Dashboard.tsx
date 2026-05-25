@@ -55,12 +55,15 @@ export default function Dashboard() {
         throw new Error('Aucun entrepôt disponible');
       }
       const today = new Date().toISOString().split('T')[0];
+      const selectedWarehouseId = warehouses[0].id;
+
+      // Filtrer les ressources par entrepôt pour éviter l'optimisation multi-entrepôts
       return lancerOptimisation({
         date: today,
-        warehouse_id: warehouses[0].id,
-        vehicule_ids: vehicules?.filter((v) => v.statut === 'DISPONIBLE').map((v) => v.id) || [],
+        warehouse_id: selectedWarehouseId,
+        vehicule_ids: vehicules?.filter((v) => v.statut === 'DISPONIBLE' && v.warehouse_id === selectedWarehouseId).map((v) => v.id) || [],
         commande_ids:
-          commandes?.filter((c) => c.statut === 'EN_ATTENTE' && c.date_livraison === today).map((c) => c.id) || [],
+          commandes?.filter((c) => c.statut === 'EN_ATTENTE' && c.date_livraison === today && c.warehouse_id === selectedWarehouseId).map((c) => c.id) || [],
       });
     },
     onSuccess: (data) => {

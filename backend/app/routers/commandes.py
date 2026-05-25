@@ -98,8 +98,9 @@ async def update_commande(
     """
     Modifier les détails d'une commande.
     - Les commandes EN_ATTENTE peuvent être modifiées librement
-    - Les commandes AFFECTÉE peuvent être modifiées, mais seront réinitialisées à EN_ATTENTE et retirées des tournées
-    - Les commandes EN_COURS, LIVRÉE, ANNULÉE ne peuvent pas être modifiées
+    - Les commandes AFFECTEE peuvent être modifiées, mais seront réinitialisées à EN_ATTENTE et retirées des tournées
+    - Les commandes NON_AFFECTEE peuvent être modifiées librement (pour correction avant re-optimisation)
+    - Les commandes EN_COURS, LIVREE, ANNULEE ne peuvent pas être modifiées
     """
     result = await db.execute(select(Commande).where(Commande.id == commande_id))
     commande = result.scalar_one_or_none()
@@ -112,10 +113,10 @@ async def update_commande(
     if current_user.role == RoleEnum.EXPEDITEUR and commande.expediteur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Accès non autorisé")
 
-    if commande.statut not in [StatutCommandeEnum.EN_ATTENTE, StatutCommandeEnum.AFFECTEE]:
+    if commande.statut not in [StatutCommandeEnum.EN_ATTENTE, StatutCommandeEnum.AFFECTEE, StatutCommandeEnum.NON_AFFECTEE]:
         raise HTTPException(
             status_code=400,
-            detail="Seules les commandes en attente ou affectées peuvent être modifiées"
+            detail="Seules les commandes en attente, affectées ou non affectées peuvent être modifiées"
         )
 
     # Si la commande est AFFECTÉE, la réinitialiser à EN_ATTENTE et la retirer des tournées
@@ -186,6 +187,29 @@ async def affecter_commande(
     commande = result.scalar_one_or_none()
     if not commande:
         raise HTTPException(status_code=404, detail="Commande introuvable")
+
+    # Valider que le véhicule existe
+    from app.models.vehicule import Vehicule
+    vehicule_result = await db.execute(
+        select(Vehicule).where(Vehicule.id == payload.vehicule_id)
+    )
+    vehicule = vehicule_result.scalar_one_or_none()
+    if not vehicule:
+        raise HTTPException(status_code=404, detail=f"Véhicule #{payload.vehicule_id} introuvable")
+
+    # Valider que le chauffeur existe et a le bon rôle
+    chauffeur_result = await db.execute(
+        select(Utilisateur).where(Utilisateur.id == payload.chauffeur_id)
+    )
+    chauffeur = chauffeur_result.scalar_one_or_none()
+    if not chauffeur:
+        raise HTTPException(status_code=404, detail=f"Chauffeur #{payload.chauffeur_id} introuvable")
+    if chauffeur.role != RoleEnum.CHAUFFEUR:
+        raise HTTPException(
+            status_code=400,
+            detail=f"L'utilisateur #{payload.chauffeur_id} n'est pas un chauffeur (rôle: {chauffeur.role.value})"
+        )
+
     commande.vehicule_id = payload.vehicule_id
     commande.chauffeur_id = payload.chauffeur_id
     commande.statut = StatutCommandeEnum.AFFECTEE
@@ -215,11 +239,24 @@ async def delete_commande(
         await db.delete(commande)
     elif commande.statut in [StatutCommandeEnum.AFFECTEE, StatutCommandeEnum.EN_COURS]:
         from app.models.tournee import StopTournee, Tournee
+        from app.models.anomalie import Anomalie
 
         stops_result = await db.execute(
             select(StopTournee).where(StopTournee.commande_id == commande_id)
         )
         stops = stops_result.scalars().all()
+
+        # Vérifier si des anomalies sont liées aux arrêts
+        stop_ids = [stop.id for stop in stops]
+        if stop_ids:
+            anomalies_result = await db.execute(
+                select(Anomalie).where(Anomalie.stop_id.in_(stop_ids))
+            )
+            anomalies = anomalies_result.scalars().all()
+
+            # Détacher les anomalies des arrêts avant suppression
+            for anomalie in anomalies:
+                anomalie.stop_id = None
 
         affected_tournee_ids = set(stop.tournee_id for stop in stops)
 

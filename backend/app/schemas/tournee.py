@@ -24,6 +24,7 @@ class TourneeResponse(BaseModel):
     progression: int
     statut: StatutTourneeEnum
     heure_depart: Optional[datetime] = None
+    heure_retour_depot: Optional[datetime] = None
     depot_lat: Optional[float] = None
     depot_lon: Optional[float] = None
     warehouse_id: Optional[int] = None

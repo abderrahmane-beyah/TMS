@@ -15,7 +15,7 @@ function buildGoogleMapsUrl(stops: Stop[], depotLat?: number, depotLon?: number)
   const activeStops = stops.filter(s => s.commande_statut !== 'ANNULEE');
   const sorted = [...activeStops].sort((a, b) => a.ordre - b.ordre);
   if (sorted.length === 0) return '';
-  if (!depotLat || !depotLon) return ''; // Need depot coordinates
+  if (!depotLat || !depotLon) return ''; // Coordonnées du dépôt nécessaires
 
   // Démarrer depuis le dépôt
   const origin = `${depotLat},${depotLon}`;
@@ -152,6 +152,7 @@ export default function ChauffeurTournee() {
 
   const googleMapsUrl = buildGoogleMapsUrl(tournee.stops ?? [], depotLat, depotLon);
   const deliveredCount = sortedStops.filter((s) => s.statut === 'LIVREE').length;
+  const allActiveStopsDelivered = sortedStops.length > 0 && deliveredCount === sortedStops.length;
 
   return (
     <div className="mx-auto max-w-2xl px-1">
@@ -194,17 +195,30 @@ export default function ChauffeurTournee() {
       </div>
 
       {/* Boutons démarrer/terminer la tournée */}
-      <div className="mb-5 flex gap-3">
+      <div className="mb-5 flex flex-col gap-3">
         {tournee.statut === 'PLANIFIEE' && (
-          <button
-            onClick={() => demarrerMutation.mutate()}
-            disabled={demarrerMutation.isPending}
-            className="flex-1 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
-          >
-            {demarrerMutation.isPending ? 'Démarrage...' : '🚀 Démarrer la tournée'}
-          </button>
+          <>
+            <button
+              onClick={() => {
+                if (sortedStops.length === 0) {
+                  toast.error('Impossible de démarrer : aucun arrêt actif dans cette tournée');
+                  return;
+                }
+                demarrerMutation.mutate();
+              }}
+              disabled={demarrerMutation.isPending || sortedStops.length === 0}
+              className="flex-1 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {demarrerMutation.isPending ? 'Démarrage...' : '🚀 Démarrer la tournée'}
+            </button>
+            {sortedStops.length === 0 && (
+              <p className="text-center text-xs text-red-600">
+                ⚠️ Tous les arrêts de cette tournée ont été annulés. Contactez votre dispatcheur.
+              </p>
+            )}
+          </>
         )}
-        {tournee.statut === 'EN_COURS' && tournee.progression === 100 && (
+        {tournee.statut === 'EN_COURS' && allActiveStopsDelivered && (
           <button
             onClick={() => terminerMutation.mutate()}
             disabled={terminerMutation.isPending}

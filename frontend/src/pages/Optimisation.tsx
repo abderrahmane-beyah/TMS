@@ -10,6 +10,22 @@ import StatusBadge from '../components/StatusBadge';
 import { formatDateTime } from '../utils/formatters';
 import toast from 'react-hot-toast';
 
+export function formatDistanceKm(distance: number | null | undefined): string {
+  return distance != null ? `${distance.toFixed(1)} km` : 'N/A';
+}
+
+export function getSafeCount(value: number | null | undefined): number {
+  return value ?? 0;
+}
+
+export function getTourneesDepuisResultat(result: { resultat_json?: any }): any[] {
+  return result.resultat_json?.tournees ?? [];
+}
+
+export function getCommandesNonServiesDepuisResultat(result: { resultat_json?: any }): any[] {
+  return result.resultat_json?.commandes_non_servies ?? [];
+}
+
 export default function Optimisation() {
   const queryClient = useQueryClient();
   const [warehouseId, setWarehouseId] = useState<string>('');
@@ -221,7 +237,7 @@ export default function Optimisation() {
               value={date}
               onChange={(e) => {
                 setDate(e.target.value);
-                setSelectedCommandes([]); // Clear selection when date changes
+                setSelectedCommandes([]); // Réinitialiser la sélection lors du changement de date
               }}
               className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
@@ -487,26 +503,26 @@ function ResultPanel({ title, result }: { title: string; result: NonNullable<Ret
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="rounded-lg bg-blue-50 p-3 text-center">
           <p className="text-xs text-blue-600">Distance</p>
-          <p className="text-lg font-bold text-blue-900">{result.distance_totale.toFixed(1)} km</p>
+          <p className="text-lg font-bold text-blue-900">{formatDistanceKm(result.distance_totale)}</p>
         </div>
         <div className="rounded-lg bg-green-50 p-3 text-center">
           <p className="text-xs text-green-600">Véhicules</p>
-          <p className="text-lg font-bold text-green-900">{result.nb_vehicules_utilises}</p>
+          <p className="text-lg font-bold text-green-900">{getSafeCount(result.nb_vehicules_utilises)}</p>
         </div>
         <div className="rounded-lg bg-red-50 p-3 text-center">
           <p className="text-xs text-red-600">Non servies</p>
-          <p className="text-lg font-bold text-red-900">{result.commandes_non_servies?.length ?? result.nb_commandes_non_servies}</p>
+          <p className="text-lg font-bold text-red-900">{getSafeCount(result.nb_commandes_non_servies)}</p>
         </div>
       </div>
 
       {/* Détail des tournées */}
-      {result.tournees && result.tournees.length > 0 && (
+      {getTourneesDepuisResultat(result).length > 0 && (
         <div className="space-y-2">
-          {result.tournees.map((t, i) => (
+          {getTourneesDepuisResultat(result).map((t, i) => (
             <div key={i} className="rounded-lg border border-gray-100 p-3 text-sm">
               <div className="flex justify-between">
                 <span className="font-medium text-gray-900">Véhicule #{t.vehicule_id}</span>
-                <span className="text-gray-500">{t.distance?.toFixed(1)} km — {t.stops?.length ?? 0} arrêts</span>
+                <span className="text-gray-500">{t.distance?.toFixed(1) ?? 0} km — {t.stops?.length ?? 0} arrêts</span>
               </div>
             </div>
           ))}
@@ -514,10 +530,10 @@ function ResultPanel({ title, result }: { title: string; result: NonNullable<Ret
       )}
 
       {/* Commandes non servies */}
-      {result.commandes_non_servies && result.commandes_non_servies.length > 0 && (
+      {getCommandesNonServiesDepuisResultat(result).length > 0 && (
         <div className="mt-4">
           <h4 className="mb-2 text-xs font-medium uppercase text-red-600">Non servies</h4>
-          {result.commandes_non_servies.map((c) => (
+          {getCommandesNonServiesDepuisResultat(result).map((c) => (
             <p key={c.commande_id} className="text-xs text-red-700">
               #{c.commande_id} — {c.raison}
             </p>

@@ -33,7 +33,7 @@ export default function ChauffeurDashboard() {
   });
 
   const today = new Date().toISOString().split('T')[0];
-  const todayTournee = tournees?.find(t => t.date === today);
+  const todayTournees = tournees?.filter(t => t.date === today) || [];  // Modifié en tableau pour gérer plusieurs tournées
   const futureTournees = tournees?.filter(t => t.date > today) || [];
 
   return (
@@ -47,66 +47,75 @@ export default function ChauffeurDashboard() {
         <LoadingSkeleton type="card" />
       ) : (
         <div className="space-y-4">
-          {/* Tournée du jour */}
-          {todayTournee ? (
+          {/* Tournées du jour */}
+          {todayTournees.length > 0 ? (
             <div>
               <h2 className="mb-3 text-sm font-medium text-gray-700">Aujourd'hui - {today}</h2>
-              <div
-                onClick={() => navigate('/chauffeur/tournee')}
-                className="cursor-pointer rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition-shadow active:shadow-md"
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Tournée #{todayTournee.id}</h3>
-                  <StatusBadge statut={todayTournee.statut} />
-                </div>
-
-                {/* Aperçu de la plage horaire du jour */}
-                {todayTournee.stops && todayTournee.stops.length > 0 && todayTournee.heure_depart && (() => {
-                  const sortedStops = [...todayTournee.stops].sort((a, b) => a.ordre - b.ordre);
-                  const lastStop = sortedStops[sortedStops.length - 1];
-
-                  // Heure de départ : départ prévu du dépôt (calculé par le solveur)
-                  const startTime = formatTime(todayTournee.heure_depart);
-                  const endTime = lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null;
-
-                  return startTime && endTime ? (
-                    <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-white px-3 py-2">
-                      <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm font-semibold text-blue-900">
-                        {startTime} - {endTime}
-                      </span>
-                    </div>
-                  ) : null;
-                })()}
-
-                <dl className="mb-4 grid grid-cols-3 gap-3 text-center">
-                  <div className="rounded-lg bg-white p-3">
-                    <dt className="text-[11px] text-gray-500">Arrêts</dt>
-                    <dd className="text-lg font-bold text-gray-900">{todayTournee.stops?.length ?? 0}</dd>
-                  </div>
-                  <div className="rounded-lg bg-white p-3">
-                    <dt className="text-[11px] text-gray-500">Distance</dt>
-                    <dd className="text-lg font-bold text-gray-900">{todayTournee.distance_totale ? formatKm(todayTournee.distance_totale) : 'N/A'}</dd>
-                  </div>
-                  <div className="rounded-lg bg-white p-3">
-                    <dt className="text-[11px] text-gray-500">Progression</dt>
-                    <dd className="text-lg font-bold text-blue-600">{todayTournee.progression}%</dd>
-                  </div>
-                </dl>
-
-                <div className="mb-4 h-2 w-full rounded-full bg-white">
+              <div className="space-y-3">
+                {todayTournees.map((todayTournee) => (
                   <div
-                    className="h-2 rounded-full bg-blue-600 transition-all"
-                    style={{ width: `${todayTournee.progression}%` }}
-                  />
-                </div>
+                    key={todayTournee.id}
+                    onClick={() => navigate('/chauffeur/tournee')}
+                    className="cursor-pointer rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition-shadow active:shadow-md"
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-900">Tournée #{todayTournee.id}</h3>
+                      <StatusBadge statut={todayTournee.statut} />
+                    </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Véhicule #{todayTournee.vehicule_id}</span>
-                  <span className="font-medium text-blue-600">Voir les détails →</span>
-                </div>
+                    {/* Aperçu de la plage horaire du jour */}
+                    {todayTournee.stops && todayTournee.stops.length > 0 && (() => {
+                      const sortedStops = [...todayTournee.stops].sort((a, b) => a.ordre - b.ordre);
+                      const firstStop = sortedStops[0];
+                      const lastStop = sortedStops[sortedStops.length - 1];
+
+                      // Premier arrêt et retour au dépôt (temps prévus par l'optimisation)
+                      // Fallback au dernier arrêt si heure_retour_depot n'est pas disponible (anciennes tournées)
+                      const startTime = firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null;
+                      const endTime = todayTournee.heure_retour_depot
+                        ? formatTime(todayTournee.heure_retour_depot)
+                        : (lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null);
+
+                      return startTime && endTime ? (
+                        <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-white px-3 py-2">
+                          <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-sm font-semibold text-blue-900">
+                            {startTime} - {endTime}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    <dl className="mb-4 grid grid-cols-3 gap-3 text-center">
+                      <div className="rounded-lg bg-white p-3">
+                        <dt className="text-[11px] text-gray-500">Arrêts</dt>
+                        <dd className="text-lg font-bold text-gray-900">{todayTournee.stops?.length ?? 0}</dd>
+                      </div>
+                      <div className="rounded-lg bg-white p-3">
+                        <dt className="text-[11px] text-gray-500">Distance</dt>
+                        <dd className="text-lg font-bold text-gray-900">{todayTournee.distance_totale ? formatKm(todayTournee.distance_totale) : 'N/A'}</dd>
+                      </div>
+                      <div className="rounded-lg bg-white p-3">
+                        <dt className="text-[11px] text-gray-500">Progression</dt>
+                        <dd className="text-lg font-bold text-blue-600">{todayTournee.progression}%</dd>
+                      </div>
+                    </dl>
+
+                    <div className="mb-4 h-2 w-full rounded-full bg-white">
+                      <div
+                        className="h-2 rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${todayTournee.progression}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Véhicule #{todayTournee.vehicule_id}</span>
+                      <span className="font-medium text-blue-600">Voir les détails →</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
@@ -141,13 +150,17 @@ export default function ChauffeurDashboard() {
                       </div>
 
                       {/* Aperçu de la plage horaire */}
-                      {t.stops && t.stops.length > 0 && t.heure_depart && (() => {
+                      {t.stops && t.stops.length > 0 && (() => {
                         const sortedStops = [...t.stops].sort((a, b) => a.ordre - b.ordre);
+                        const firstStop = sortedStops[0];
                         const lastStop = sortedStops[sortedStops.length - 1];
 
-                        // Heure de départ du dépôt (calculée par le solveur pendant l'optimisation)
-                        const startTime = formatTime(t.heure_depart);
-                        const endTime = lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null;
+                        // Premier arrêt et retour au dépôt (temps prévus par l'optimisation)
+                        // Fallback au dernier arrêt si heure_retour_depot n'est pas disponible (anciennes tournées)
+                        const startTime = firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null;
+                        const endTime = t.heure_retour_depot
+                          ? formatTime(t.heure_retour_depot)
+                          : (lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null);
 
                         return startTime && endTime ? (
                           <div className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
@@ -235,7 +248,7 @@ export default function ChauffeurDashboard() {
             </div>
           )}
 
-          {!todayTournee && futureTournees.length === 0 && (
+          {todayTournees.length === 0 && futureTournees.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 py-16">
               <svg className="mb-4 h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />

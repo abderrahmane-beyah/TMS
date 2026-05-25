@@ -13,6 +13,7 @@ class Tournee(Base):
     progression             = Column(Integer, default=0)
     statut                  = Column(SAEnum(StatutTourneeEnum), default=StatutTourneeEnum.PLANIFIEE)
     heure_depart            = Column(DateTime(timezone=True), nullable=True)
+    heure_retour_depot      = Column(DateTime(timezone=True), nullable=True)  # Heure de retour prévue au dépôt
     depot_lat               = Column(Float, nullable=True)  # Latitude du point de départ (dépôt)
     depot_lon               = Column(Float, nullable=True)  # Longitude du point de départ (dépôt)
     vehicule_id             = Column(Integer, ForeignKey("vehicules.id"), nullable=False)

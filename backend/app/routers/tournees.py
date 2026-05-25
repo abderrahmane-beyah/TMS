@@ -6,7 +6,8 @@ from datetime import date
 from app.database import get_db
 from app.models.tournee import Tournee, StopTournee
 from app.models.commande import Commande
-from app.models.enums import RoleEnum, StatutTourneeEnum, StatutStopEnum, StatutCommandeEnum
+from app.models.vehicule import Vehicule
+from app.models.enums import RoleEnum, StatutTourneeEnum, StatutStopEnum, StatutCommandeEnum, StatutVehiculeEnum, StatutChauffeurEnum
 from app.schemas.tournee import TourneeResponse, TourneeDetailResponse, StopResponse, TourneeUpdate
 from app.core.dependencies import get_current_user, require_role
 from app.models.utilisateur import Utilisateur
@@ -25,17 +26,26 @@ async def list_tournees(
         result = await db.execute(
             select(Tournee)
             .where(Tournee.chauffeur_id == current_user.id)
-            .options(selectinload(Tournee.stops))
+            .options(selectinload(Tournee.stops).selectinload(StopTournee.commande))
             .order_by(Tournee.date.desc())
         )
     else:
         result = await db.execute(
             select(Tournee)
-            .options(selectinload(Tournee.stops))
+            .options(selectinload(Tournee.stops).selectinload(StopTournee.commande))
             .order_by(Tournee.date.desc())
         )
 
-    return result.scalars().all()
+    tournees = result.scalars().all()
+
+    # Définir le statut de commande pour chaque arrêt
+    for tournee in tournees:
+        if tournee.stops:
+            for stop in tournee.stops:
+                if hasattr(stop, 'commande') and stop.commande:
+                    stop.commande_statut = stop.commande.statut
+
+    return tournees
 
 
 @router.get("/ma-tournee", response_model=TourneeDetailResponse)
@@ -146,7 +156,7 @@ async def update_tournee(
     return tournee
 
 
-@router.patch("/{tournee_id}/demarrer", response_model=TourneeResponse)
+@router.patch("/{tournee_id}/demarrer", response_model=TourneeDetailResponse)
 async def demarrer_tournee(
     tournee_id: int,
     db: AsyncSession = Depends(get_db),
@@ -154,7 +164,11 @@ async def demarrer_tournee(
         require_role(RoleEnum.DISPATCHEUR, RoleEnum.ADMINISTRATEUR, RoleEnum.CHAUFFEUR)
     )
 ):
-    result = await db.execute(select(Tournee).where(Tournee.id == tournee_id))
+    result = await db.execute(
+        select(Tournee)
+        .where(Tournee.id == tournee_id)
+        .options(selectinload(Tournee.stops).selectinload(StopTournee.commande))
+    )
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Tournée introuvable")
@@ -164,15 +178,66 @@ async def demarrer_tournee(
 
     if tournee.statut != StatutTourneeEnum.PLANIFIEE:
         raise HTTPException(status_code=400, detail="La tournée n'est pas en statut PLANIFIEE")
+
+    # Vérifier que la tournée est prévue pour aujourd'hui
+    from datetime import date as date_type
+    today = date_type.today()
+    if tournee.date != today:
+        if tournee.date > today:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Impossible de démarrer : cette tournée est prévue pour le {tournee.date.strftime('%d/%m/%Y')}"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Impossible de démarrer : cette tournée était prévue pour le {tournee.date.strftime('%d/%m/%Y')}"
+            )
+
+    # Vérifier qu'il y a au moins un arrêt avec une commande active (non annulée)
+    stops_result = await db.execute(
+        select(StopTournee)
+        .where(StopTournee.tournee_id == tournee_id)
+        .options(selectinload(StopTournee.commande))
+    )
+    stops = stops_result.scalars().all()
+
+    # Compter les arrêts avec commandes actives (non ANNULEE)
+    active_stops = [
+        stop for stop in stops
+        if stop.commande and stop.commande.statut != StatutCommandeEnum.ANNULEE
+    ]
+
+    if len(active_stops) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Impossible de démarrer : aucun arrêt actif dans cette tournée. Toutes les commandes ont été annulées."
+        )
+
     from datetime import datetime, timezone
     tournee.statut = StatutTourneeEnum.EN_COURS
     tournee.heure_depart = datetime.now(timezone.utc)
 
+    # Mettre le chauffeur et le véhicule en mission
+    # Mettre le chauffeur en mission
+    if tournee.chauffeur_id:
+        chauffeur_result = await db.execute(
+            select(Utilisateur).where(Utilisateur.id == tournee.chauffeur_id)
+        )
+        chauffeur = chauffeur_result.scalar_one_or_none()
+        if chauffeur:
+            chauffeur.statut = StatutChauffeurEnum.EN_MISSION
+
+    # Mettre le véhicule en mission
+    if tournee.vehicule_id:
+        vehicule_result = await db.execute(
+            select(Vehicule).where(Vehicule.id == tournee.vehicule_id)
+        )
+        vehicule = vehicule_result.scalar_one_or_none()
+        if vehicule:
+            vehicule.statut = StatutVehiculeEnum.EN_MISSION
+
     # Marquer toutes les commandes de cette tournée comme EN_COURS
-    stops_result = await db.execute(
-        select(StopTournee).where(StopTournee.tournee_id == tournee_id)
-    )
-    stops = stops_result.scalars().all()
     for stop in stops:
         if stop.commande_id:
             commande_result = await db.execute(
@@ -184,10 +249,17 @@ async def demarrer_tournee(
 
     await db.commit()
     await db.refresh(tournee)
+
+    # Définir le statut de commande pour chaque arrêt
+    if tournee.stops:
+        for stop in tournee.stops:
+            if hasattr(stop, 'commande') and stop.commande:
+                stop.commande_statut = stop.commande.statut
+
     return tournee
 
 
-@router.patch("/{tournee_id}/terminer", response_model=TourneeResponse)
+@router.patch("/{tournee_id}/terminer", response_model=TourneeDetailResponse)
 async def terminer_tournee(
     tournee_id: int,
     db: AsyncSession = Depends(get_db),
@@ -195,7 +267,11 @@ async def terminer_tournee(
         require_role(RoleEnum.DISPATCHEUR, RoleEnum.ADMINISTRATEUR, RoleEnum.CHAUFFEUR)
     )
 ):
-    result = await db.execute(select(Tournee).where(Tournee.id == tournee_id))
+    result = await db.execute(
+        select(Tournee)
+        .where(Tournee.id == tournee_id)
+        .options(selectinload(Tournee.stops).selectinload(StopTournee.commande))
+    )
     tournee = result.scalar_one_or_none()
     if not tournee:
         raise HTTPException(status_code=404, detail="Tournée introuvable")
@@ -208,8 +284,35 @@ async def terminer_tournee(
 
     tournee.statut = StatutTourneeEnum.TERMINEE
     tournee.progression = 100
+
+    # Remettre le chauffeur et le véhicule disponibles
+    # Remettre le chauffeur disponible
+    if tournee.chauffeur_id:
+        chauffeur_result = await db.execute(
+            select(Utilisateur).where(Utilisateur.id == tournee.chauffeur_id)
+        )
+        chauffeur = chauffeur_result.scalar_one_or_none()
+        if chauffeur:
+            chauffeur.statut = StatutChauffeurEnum.DISPONIBLE
+
+    # Remettre le véhicule disponible
+    if tournee.vehicule_id:
+        vehicule_result = await db.execute(
+            select(Vehicule).where(Vehicule.id == tournee.vehicule_id)
+        )
+        vehicule = vehicule_result.scalar_one_or_none()
+        if vehicule:
+            vehicule.statut = StatutVehiculeEnum.DISPONIBLE
+
     await db.commit()
     await db.refresh(tournee)
+
+    # Définir le statut de commande pour chaque arrêt
+    if tournee.stops:
+        for stop in tournee.stops:
+            if hasattr(stop, 'commande') and stop.commande:
+                stop.commande_statut = stop.commande.statut
+
     return tournee
 
 
@@ -225,10 +328,12 @@ async def confirmer_livraison(
     )
 ):
     result = await db.execute(
-        select(StopTournee).where(
+        select(StopTournee)
+        .where(
             StopTournee.id == stop_id,
             StopTournee.tournee_id == tournee_id
         )
+        .options(selectinload(StopTournee.commande))
     )
     stop = result.scalar_one_or_none()
     if not stop:
@@ -274,4 +379,9 @@ async def confirmer_livraison(
 
     await db.commit()
     await db.refresh(stop)
+
+    # Définir le statut de commande
+    if hasattr(stop, 'commande') and stop.commande:
+        stop.commande_statut = stop.commande.statut
+
     return stop
