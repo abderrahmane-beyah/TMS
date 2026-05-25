@@ -8,7 +8,7 @@ import DataTable, { type Column } from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../hooks/useAuth';
-import { useGeocoding } from '../hooks/useGeocoding';
+import { useHybridGeocoding as useGeocoding } from '../hooks/useHybridGeocoding';
 import toast from 'react-hot-toast';
 
 export default function Commandes() {
