@@ -42,6 +42,8 @@ nano .env.production  # Modifier les valeurs
 # Démarrer tous les services
 docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
 
+
+
 # Vérifier que tout fonctionne
 docker ps
 docker logs tms-prod-backend
