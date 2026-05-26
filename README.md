@@ -5,7 +5,15 @@
 [![Server](https://img.shields.io/badge/server-Hetzner-red)](https://www.hetzner.com)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
 ---
+connecter vous :
+email: admin@tms.com 
+password: admin123
 
+pour les chauffeurs les mots de passes sont : chauffeur123
+pour les expediteurs  : expediteur123
+pour les dispacheur  : dispacheur123
+
+et leurs emails son't dans page d'administration
 ## Prérequis
 
 Avant de lancer l'application, assurez-vous d'avoir installé :
