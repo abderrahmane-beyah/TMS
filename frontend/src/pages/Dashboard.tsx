@@ -1,25 +1,19 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getCommandes } from '../api/commandes';
 import { getTournees } from '../api/tournees';
 import { getVehicules } from '../api/vehicules';
-import { getWarehouses } from '../api/warehouses';
-import { lancerOptimisation } from '../api/optimisation';
 import { getOtd } from '../api/kpis';
 import KpiCard from '../components/KpiCard';
 import StatusBadge from '../components/StatusBadge';
 import MapView from '../components/MapView';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import type { MapMarker, MapRoute } from '../components/MapView';
-import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { useOptimisationPolling } from '../hooks/useOptimisationPolling';
 
 const ROUTE_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [tacheId, setTacheId] = useState<number | null>(null);
 
   const { data: commandes, isLoading: loadingCommandes } = useQuery({
     queryKey: ['commandes', { skip: 0, limit: 20 }],
@@ -36,41 +30,11 @@ export default function Dashboard() {
     queryFn: () => getVehicules(),
   });
 
-  const { data: warehouses } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: () => getWarehouses(),
-  });
-
   const { data: otdData } = useQuery({
     queryKey: ['kpis-otd'],
     queryFn: () => getOtd(),
   });
 
-  const { isPolling, isComplete, result: optimResult } = useOptimisationPolling(tacheId);
-
-  const launchMutation = useMutation({
-    mutationFn: () => {
-      if (!warehouses || warehouses.length === 0) {
-        throw new Error('Aucun entrepôt disponible');
-      }
-      const today = new Date().toISOString().split('T')[0];
-      const selectedWarehouseId = warehouses[0].id;
-
-      // Filtrer les ressources par entrepôt pour éviter l'optimisation multi-entrepôts
-      return lancerOptimisation({
-        date: today,
-        warehouse_id: selectedWarehouseId,
-        vehicule_ids: vehicules?.filter((v) => v.statut === 'DISPONIBLE' && v.warehouse_id === selectedWarehouseId).map((v) => v.id) || [],
-        commande_ids:
-          commandes?.filter((c) => c.statut === 'EN_ATTENTE' && c.date_livraison === today && c.warehouse_id === selectedWarehouseId).map((c) => c.id) || [],
-      });
-    },
-    onSuccess: (data) => {
-      setTacheId(data.tache_id);
-      toast.success('Optimisation lancée');
-    },
-    onError: () => toast.error("Erreur lors du lancement de l'optimisation"),
-  });
 
   // Construire les données de carte à partir des tournées actives d'aujourd'hui
   const markers: MapMarker[] = [];
@@ -165,17 +129,6 @@ export default function Dashboard() {
               </svg>
             }
           />
-        </div>
-      )}
-
-      {/* Bannière de résultat d'optimisation */}
-      {isComplete && optimResult && (
-        <div className="mb-8 rounded-xl border border-green-200 bg-green-50 p-4">
-          <h3 className="font-medium text-green-800">Optimisation terminée</h3>
-          <p className="text-sm text-green-700">
-            Distance totale : {optimResult.distance_totale.toFixed(1)} km — Véhicules utilisés :{' '}
-            {optimResult.nb_vehicules_utilises} — Non servies : {optimResult.nb_commandes_non_servies}
-          </p>
         </div>
       )}
 
