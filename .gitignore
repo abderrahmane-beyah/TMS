@@ -29,9 +29,10 @@ coverage.xml
 .env
 .env.local
 .env.*.local
+.env.production
+*.env
 
-# Alembic
-alembic/
+
 
 # Node
 node_modules/
@@ -59,3 +60,15 @@ pnpm-debug.log*
 
 
 osrm-data/
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Database exports (contains sensitive data)
+*.sql
+database_export.sql
+backup_*.sql
+
+# Production files (contains secrets)
+.env.production

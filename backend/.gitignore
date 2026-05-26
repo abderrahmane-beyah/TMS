@@ -1,5 +1,6 @@
 .env
 *.env
+.env.production
 __pycache__/
 *.py[cod]
 *.pyo
@@ -22,4 +23,8 @@ logs/
 .coverage
 htmlcov/
 postgres_data/
-alembic/
+
+# Database exports (contains real data)
+*.sql
+database_export.sql
+backup_*.sql

@@ -16,6 +16,37 @@ Avant de lancer l'application, assurez-vous d'avoir installé :
 
 ## Lancement de l'application
 
+### Option 1 : Déploiement Docker (Production)
+
+**Prérequis :** Docker et Docker Compose installés
+
+```bash
+# Cloner le projet
+git clone https://github.com/abderrahmane-beyah/TMS.git
+cd TMS
+
+# Copier et configurer les variables d'environnement
+cp .env.production.example .env.production
+nano .env.production  # Modifier les valeurs
+
+# Démarrer tous les services
+docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+# Vérifier que tout fonctionne
+docker ps
+docker logs tms-prod-backend
+```
+
+**Accès :**
+- Frontend : `http://localhost`
+- API : `http://localhost:8000/docs`
+
+> **Guide de déploiement :** Voir `DEPLOY_HETZNER.md` pour déployer sur un serveur VPS (~5€/mois)
+
+---
+
+### Option 2 : Développement local
+
 ### 1. Cloner le projet
 
 ```bash
@@ -164,5 +195,15 @@ L'application est accessible sur : `http://localhost:5173`
 | Base de données | PostgreSQL 16 |
 | File de tâches | Celery + Redis |
 | Optimisation | OR-Tools (VRPTW) |
+| Routing | OSRM (Mauritania) ou google maps api key|
 | Frontend | React 19 + TypeScript + Vite |
 | Cartographie | Leaflet.js + OpenStreetMap |
+| Déploiement | Docker + Docker Compose |
+
+---
+
+## Déploiement
+
+- **Développement** : `backend/docker-compose.yml` (DB, Redis, OSRM uniquement)
+- **Production** : `docker-compose.prod.yml` (stack complète)
+- **Guides** : Voir `DEPLOY_HETZNER.md` et `DOCKER_DEPLOYMENT.md`
