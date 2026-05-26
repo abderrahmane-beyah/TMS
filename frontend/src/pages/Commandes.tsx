@@ -497,6 +497,7 @@ export default function Commandes() {
                     value={editForm.date_livraison}
                     onChange={(e) => setEditForm((f) => ({ ...f, date_livraison: e.target.value }))}
                     className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
                     required
                   />
                 </div>
@@ -504,25 +505,67 @@ export default function Commandes() {
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">
                     Heure d'ouverture
                   </label>
-                  <input
-                    type="time"
-                    value={editForm.heure_ouverture}
-                    onChange={(e) => setEditForm((f) => ({ ...f, heure_ouverture: e.target.value }))}
-                    className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={editForm.heure_ouverture.split(':')[0] || '08'}
+                      onChange={(e) => {
+                        const minutes = editForm.heure_ouverture.split(':')[1] || '00';
+                        setEditForm((f) => ({ ...f, heure_ouverture: `${e.target.value}:${minutes}` }));
+                      }}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map((h) => (
+                        <option key={h} value={h}>{h}h</option>
+                      ))}
+                    </select>
+                    <select
+                      value={editForm.heure_ouverture.split(':')[1] || '00'}
+                      onChange={(e) => {
+                        const hours = editForm.heure_ouverture.split(':')[0] || '08';
+                        setEditForm((f) => ({ ...f, heure_ouverture: `${hours}:${e.target.value}` }));
+                      }}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="00">00</option>
+                      <option value="15">15</option>
+                      <option value="30">30</option>
+                      <option value="45">45</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">
                     Heure de fermeture
                   </label>
-                  <input
-                    type="time"
-                    value={editForm.heure_fermeture}
-                    onChange={(e) => setEditForm((f) => ({ ...f, heure_fermeture: e.target.value }))}
-                    className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={editForm.heure_fermeture.split(':')[0] || '18'}
+                      onChange={(e) => {
+                        const minutes = editForm.heure_fermeture.split(':')[1] || '00';
+                        setEditForm((f) => ({ ...f, heure_fermeture: `${e.target.value}:${minutes}` }));
+                      }}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map((h) => (
+                        <option key={h} value={h}>{h}h</option>
+                      ))}
+                    </select>
+                    <select
+                      value={editForm.heure_fermeture.split(':')[1] || '00'}
+                      onChange={(e) => {
+                        const hours = editForm.heure_fermeture.split(':')[0] || '18';
+                        setEditForm((f) => ({ ...f, heure_fermeture: `${hours}:${e.target.value}` }));
+                      }}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="00">00</option>
+                      <option value="15">15</option>
+                      <option value="30">30</option>
+                      <option value="45">45</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

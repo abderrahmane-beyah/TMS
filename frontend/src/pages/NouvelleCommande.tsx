@@ -33,9 +33,9 @@ export default function NouvelleCommande() {
     poids: '',
     volume: '',
     type_vehicule_requis: '',
-    date_livraison: '',
-    heure_ouverture: '',
-    heure_fermeture: '',
+    date_livraison: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    heure_ouverture: '08:00',
+    heure_fermeture: '18:00',
   });
 
   const [geocodeStatus, setGeocodeStatus] = useState<{
@@ -80,6 +80,15 @@ export default function NouvelleCommande() {
     if (!form.volume) e.volume = 'Le volume est requis';
     else if (parseFloat(form.volume) <= 0) e.volume = 'Le volume doit être positif';
     if (!form.date_livraison) e.date_livraison = 'La date de livraison est requise';
+    else {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(form.date_livraison + 'T00:00:00');
+      if (selectedDate < tomorrow) {
+        e.date_livraison = 'La date doit être demain ou après';
+      }
+    }
     if (!form.heure_ouverture) e.heure_ouverture = "L'heure d'ouverture est requise";
     if (!form.heure_fermeture) e.heure_fermeture = "L'heure de fermeture est requise";
     if (form.heure_ouverture && form.heure_fermeture && form.heure_ouverture >= form.heure_fermeture) {
@@ -238,29 +247,72 @@ export default function NouvelleCommande() {
               onChange={(e) => setForm((f) => ({ ...f, date_livraison: e.target.value }))}
               onBlur={() => markTouched('date_livraison')}
               className={inputCls('date_livraison')}
+              min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
             />
             {touched.date_livraison && errors.date_livraison && <p className="mt-1 text-xs text-red-500">{errors.date_livraison}</p>}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Heure d'ouverture</label>
-            <input
-              type="time"
-              value={form.heure_ouverture}
-              onChange={(e) => setForm((f) => ({ ...f, heure_ouverture: e.target.value }))}
-              onBlur={() => markTouched('heure_ouverture')}
-              className={inputCls('heure_ouverture')}
-            />
+            <div className="flex gap-2">
+              <select
+                value={form.heure_ouverture.split(':')[0] || '08'}
+                onChange={(e) => {
+                  const minutes = form.heure_ouverture.split(':')[1] || '00';
+                  setForm((f) => ({ ...f, heure_ouverture: `${e.target.value}:${minutes}` }));
+                }}
+                onBlur={() => markTouched('heure_ouverture')}
+                className={inputCls('heure_ouverture')}
+              >
+                {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map((h) => (
+                  <option key={h} value={h}>{h}h</option>
+                ))}
+              </select>
+              <select
+                value={form.heure_ouverture.split(':')[1] || '00'}
+                onChange={(e) => {
+                  const hours = form.heure_ouverture.split(':')[0] || '08';
+                  setForm((f) => ({ ...f, heure_ouverture: `${hours}:${e.target.value}` }));
+                }}
+                className={inputCls('heure_ouverture')}
+              >
+                <option value="00">00</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+              </select>
+            </div>
             {touched.heure_ouverture && errors.heure_ouverture && <p className="mt-1 text-xs text-red-500">{errors.heure_ouverture}</p>}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Heure de fermeture</label>
-            <input
-              type="time"
-              value={form.heure_fermeture}
-              onChange={(e) => setForm((f) => ({ ...f, heure_fermeture: e.target.value }))}
-              onBlur={() => markTouched('heure_fermeture')}
-              className={inputCls('heure_fermeture')}
-            />
+            <div className="flex gap-2">
+              <select
+                value={form.heure_fermeture.split(':')[0] || '18'}
+                onChange={(e) => {
+                  const minutes = form.heure_fermeture.split(':')[1] || '00';
+                  setForm((f) => ({ ...f, heure_fermeture: `${e.target.value}:${minutes}` }));
+                }}
+                onBlur={() => markTouched('heure_fermeture')}
+                className={inputCls('heure_fermeture')}
+              >
+                {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map((h) => (
+                  <option key={h} value={h}>{h}h</option>
+                ))}
+              </select>
+              <select
+                value={form.heure_fermeture.split(':')[1] || '00'}
+                onChange={(e) => {
+                  const hours = form.heure_fermeture.split(':')[0] || '18';
+                  setForm((f) => ({ ...f, heure_fermeture: `${hours}:${e.target.value}` }));
+                }}
+                className={inputCls('heure_fermeture')}
+              >
+                <option value="00">00</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+              </select>
+            </div>
             {touched.heure_fermeture && errors.heure_fermeture && <p className="mt-1 text-xs text-red-500">{errors.heure_fermeture}</p>}
           </div>
         </div>
