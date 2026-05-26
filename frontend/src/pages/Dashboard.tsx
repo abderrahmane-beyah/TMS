@@ -113,21 +113,10 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500">Vue d'ensemble des opérations</p>
         </div>
         <button
-          onClick={() => launchMutation.mutate()}
-          disabled={launchMutation.isPending || isPolling}
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+          onClick={() => navigate('/optimisation')}
+          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
         >
-          {isPolling ? (
-            <span className="flex items-center gap-2">
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Optimisation en cours...
-            </span>
-          ) : (
-            "Lancer l'optimisation"
-          )}
+          Aller à l'optimisation
         </button>
       </div>
 
