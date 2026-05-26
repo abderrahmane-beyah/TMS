@@ -1,7 +1,9 @@
 
 # Système de Gestion du Transport et d'Optimisation des Tournées de Livraison
 
-
+[![Deployment](https://img.shields.io/badge/deployment-live-success)](http://116.203.75.64)
+[![Server](https://img.shields.io/badge/server-Hetzner-red)](https://www.hetzner.com)
+[![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
 ---
 
 ## Prérequis
