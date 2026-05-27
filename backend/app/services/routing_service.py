@@ -242,48 +242,61 @@ class RoutingService:
     ) -> Tuple[List[List[float]], List[List[float]]]:
         """
         Récupère la matrice via l'API Google Distance Matrix, en découpant
-        les requêtes pour respecter la limite de 100 éléments
-        (origines * destinations) par appel.
+        en blocs 2D (origines ET destinations) pour respecter les limites
+        strictes de Google : au plus 25 origines, 25 destinations, et 100
+        éléments (origines * destinations) par requête. On utilise des blocs
+        de 10x10 = 100 éléments, ce qui respecte toutes les limites quel que
+        soit n.
         """
         n = len(locations)
         UNREACHABLE_KM = 1.0e7
         distance_matrix = [[0.0] * n for _ in range(n)]
         time_matrix = [[0] * n for _ in range(n)]
 
-        # 100 éléments max par requête. Avec n destinations par ligne, on
-        # traite au plus floor(100 / n) origines à la fois (au moins 1).
-        origins_per_call = max(1, 100 // n)
         url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+        chunk_size = 10  # 10x10 = 100 éléments : sûr (<=25 par côté, <=100 total)
 
-        for start in range(0, n, origins_per_call):
-            block = list(range(start, min(start + origins_per_call, n)))
-            origins = "|".join(f"{locations[i][0]},{locations[i][1]}" for i in block)
-            destinations = "|".join(f"{lat},{lon}" for lat, lon in locations)
+        for i_start in range(0, n, chunk_size):
+            i_end = min(i_start + chunk_size, n)
+            origins_str = "|".join(
+                f"{lat},{lon}" for lat, lon in locations[i_start:i_end]
+            )
+            for j_start in range(0, n, chunk_size):
+                j_end = min(j_start + chunk_size, n)
+                dests_str = "|".join(
+                    f"{lat},{lon}" for lat, lon in locations[j_start:j_end]
+                )
+                params = {
+                    'origins': origins_str,
+                    'destinations': dests_str,
+                    'key': self.google_api_key,
+                    'mode': 'driving',
+                }
+                response = requests.get(url, params=params, timeout=30)
+                response.raise_for_status()
+                data = response.json()
 
-            params = {
-                'origins': origins,
-                'destinations': destinations,
-                'key': self.google_api_key,
-                'mode': 'driving',
-            }
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
+                if data.get('status') != 'OK':
+                    raise ValueError(f"Erreur Google Distance Matrix : {data.get('status')}")
 
-            if data.get('status') != 'OK':
-                raise ValueError(f"Erreur Google Distance Matrix : {data.get('status')}")
-
-            for oi, i in enumerate(block):
-                elements = data['rows'][oi]['elements']
-                for j in range(n):
-                    el = elements[j]
-                    if el.get('status') != 'OK':
-                        # Paire injoignable : grande valeur.
-                        distance_matrix[i][j] = 0.0 if i == j else UNREACHABLE_KM
-                        time_matrix[i][j] = 0 if i == j else int(UNREACHABLE_KM)
-                    else:
-                        distance_matrix[i][j] = el['distance']['value'] / 1000.0
-                        time_matrix[i][j] = int(el['duration']['value'])
+                rows = data.get('rows', [])
+                for oi, i_actual in enumerate(range(i_start, i_end)):
+                    # Garde-fou : si Google renvoie moins de lignes/éléments
+                    # qu'attendu, on traite les manquants comme injoignables
+                    # plutôt que de lever une IndexError.
+                    elements = rows[oi]['elements'] if oi < len(rows) else []
+                    for dj, j_actual in enumerate(range(j_start, j_end)):
+                        el = elements[dj] if dj < len(elements) else {}
+                        if el.get('status') != 'OK':
+                            distance_matrix[i_actual][j_actual] = (
+                                0.0 if i_actual == j_actual else UNREACHABLE_KM
+                            )
+                            time_matrix[i_actual][j_actual] = (
+                                0 if i_actual == j_actual else int(UNREACHABLE_KM)
+                            )
+                        else:
+                            distance_matrix[i_actual][j_actual] = el['distance']['value'] / 1000.0
+                            time_matrix[i_actual][j_actual] = int(el['duration']['value'])
 
         for i in range(n):
             distance_matrix[i][i] = 0.0
