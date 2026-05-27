@@ -17,13 +17,15 @@ jobs:
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd ~/TMS
-            echo " Récupération du code..."
-            git pull origin main
-            echo " Arrêt des conteneurs..."
+            echo "Recuperation du code..."
+            git fetch origin
+            git reset --hard origin/main
+            echo "Arret des conteneurs..."
             docker compose -f docker-compose.prod.yml --env-file .env.production down
-            echo " Reconstruction des images..."
+            echo "Reconstruction des images..."
             docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache
-            echo " Démarrage des conteneurs..."
+            echo "Demarrage des conteneurs..."
             docker compose -f docker-compose.prod.yml --env-file .env.production up -d
-            echo " Déploiement terminé!"
+            echo "Deploiement termine!"
