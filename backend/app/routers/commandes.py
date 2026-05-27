@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import Optional
+from datetime import datetime, date, timedelta
 from app.database import get_db
 from app.models.commande import Commande
 from app.models.enums import StatutCommandeEnum, RoleEnum
@@ -56,6 +57,19 @@ async def create_commande(
     db: AsyncSession = Depends(get_db),
     current_user: Utilisateur = Depends(require_role(RoleEnum.EXPEDITEUR, RoleEnum.ADMINISTRATEUR))
 ):
+    # Valider que la date de livraison est demain ou après
+    if isinstance(payload.date_livraison, str):
+        delivery_date = datetime.strptime(payload.date_livraison, "%Y-%m-%d").date()
+    else:
+        delivery_date = payload.date_livraison  # Already a date object from Pydantic
+
+    tomorrow = date.today() + timedelta(days=1)
+    if delivery_date < tomorrow:
+        raise HTTPException(
+            status_code=400,
+            detail="La date de livraison doit être demain ou après"
+        )
+
     commande = Commande(**payload.model_dump(), expediteur_id=current_user.id)
     db.add(commande)
     await db.commit()
@@ -118,6 +132,20 @@ async def update_commande(
             status_code=400,
             detail="Seules les commandes en attente, affectées ou non affectées peuvent être modifiées"
         )
+
+    # Valider que la date de livraison est demain ou après (si modifiée)
+    if payload.date_livraison is not None:
+        if isinstance(payload.date_livraison, str):
+            delivery_date = datetime.strptime(payload.date_livraison, "%Y-%m-%d").date()
+        else:
+            delivery_date = payload.date_livraison  # Already a date object from Pydantic
+
+        tomorrow = date.today() + timedelta(days=1)
+        if delivery_date < tomorrow:
+            raise HTTPException(
+                status_code=400,
+                detail="La date de livraison doit être demain ou après"
+            )
 
     # Si la commande est AFFECTÉE, la réinitialiser à EN_ATTENTE et la retirer des tournées
     if commande.statut == StatutCommandeEnum.AFFECTEE:
