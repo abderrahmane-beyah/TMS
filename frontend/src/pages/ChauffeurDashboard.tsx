@@ -33,8 +33,9 @@ export default function ChauffeurDashboard() {
   });
 
   const today = new Date().toISOString().split('T')[0];
-  const todayTournees = tournees?.filter(t => t.date === today) || [];  // Modifié en tableau pour gérer plusieurs tournées
+  const todayTournees = tournees?.filter(t => t.date === today) || [];
   const futureTournees = tournees?.filter(t => t.date > today) || [];
+  const pastTournees = tournees?.filter(t => t.date < today) || [];
 
   return (
     <div className="mx-auto max-w-2xl px-1">
@@ -55,7 +56,7 @@ export default function ChauffeurDashboard() {
                 {todayTournees.map((todayTournee) => (
                   <div
                     key={todayTournee.id}
-                    onClick={() => navigate('/chauffeur/tournee')}
+                    onClick={() => navigate(`/tournees/${todayTournee.id}`)}
                     className="cursor-pointer rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition-shadow active:shadow-md"
                   >
                     <div className="mb-3 flex items-center justify-between">
@@ -126,6 +127,46 @@ export default function ChauffeurDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
                 <p className="text-sm text-gray-500">Aucune tournée pour aujourd'hui</p>
+              </div>
+            </div>
+          )}
+
+          {/* Tournées passées */}
+          {pastTournees.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-sm font-medium text-gray-700">Tournées passées</h2>
+              <div className="space-y-3">
+                {pastTournees.map((t) => (
+                  <div key={t.id} className="rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+                    <div
+                      onClick={() => navigate(`/tournees/${t.id}`)}
+                      className="cursor-pointer"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-900">Tournée #{t.id}</h3>
+                          <p className="text-xs text-gray-500">{t.date}</p>
+                        </div>
+                        <StatusBadge statut={t.statut} />
+                      </div>
+
+                      <dl className="mb-3 grid grid-cols-3 gap-2 text-xs">
+                        <div className="text-center">
+                          <dt className="text-gray-500">Arrêts</dt>
+                          <dd className="font-semibold text-gray-900">{t.stops?.length ?? 0}</dd>
+                        </div>
+                        <div className="text-center">
+                          <dt className="text-gray-500">Distance</dt>
+                          <dd className="font-semibold text-gray-900">{t.distance_totale ? formatKm(t.distance_totale) : 'N/A'}</dd>
+                        </div>
+                        <div className="text-center">
+                          <dt className="text-gray-500">Progression</dt>
+                          <dd className="font-semibold text-gray-900">{t.progression}%</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -248,7 +289,7 @@ export default function ChauffeurDashboard() {
             </div>
           )}
 
-          {todayTournees.length === 0 && futureTournees.length === 0 && (
+          {todayTournees.length === 0 && futureTournees.length === 0 && pastTournees.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 py-16">
               <svg className="mb-4 h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />

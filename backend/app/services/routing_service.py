@@ -4,6 +4,7 @@ Utilise uniquement des réseaux routiers réels (OSRM ou Google Maps).
 """
 from typing import List, Tuple
 import requests
+import time
 from app.config import settings
 
 
@@ -68,7 +69,7 @@ class RoutingService:
 
     def _google_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> Tuple[float, float]:
         """
-        Récupère la distance routière et le temps via l'API Google Distance Matrix.
+        Récupère la distance routière et le temps via l'API Google Routes (nouvelle).
 
         Returns:
             (distance_km, time_seconds)
@@ -76,35 +77,53 @@ class RoutingService:
         Raises:
             Exception si l'API Google échoue ou si l'itinéraire est introuvable
         """
-        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-        params = {
-            'origins': f"{lat1},{lon1}",
-            'destinations': f"{lat2},{lon2}",
-            'key': self.google_api_key,
-            'mode': 'driving'
+        url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+        payload = {
+            "origin": {"location": {"latLng": {"latitude": lat1, "longitude": lon1}}},
+            "destination": {"location": {"latLng": {"latitude": lat2, "longitude": lon2}}},
+            "travelMode": "DRIVE",
+            "routingPreference": "TRAFFIC_UNAWARE",
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": self.google_api_key,
+            "X-Goog-FieldMask": "routes.distanceMeters,routes.duration"
         }
 
         try:
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
+            # Retry logic pour gérer les limites de taux (429)
+            max_retries = 3
+            retry_delay = 2
+
+            for attempt in range(max_retries):
+                try:
+                    response = requests.post(url, json=payload, headers=headers, timeout=10)
+                    response.raise_for_status()
+                    break
+                except requests.exceptions.HTTPError as e:
+                    if e.response.status_code == 429 and attempt < max_retries - 1:
+                        wait_time = retry_delay * (2 ** attempt)
+                        print(f"[WARNING] Rate limit 429, attente de {wait_time}s avant retry {attempt + 1}/{max_retries}")
+                        time.sleep(wait_time)
+                    else:
+                        raise
+
             data = response.json()
 
-            if data['status'] != 'OK':
-                raise ValueError(f"Erreur API Google Maps : {data['status']}")
+            routes = data.get('routes', [])
+            if not routes:
+                raise ValueError("Aucun itinéraire trouvé")
 
-            element = data['rows'][0]['elements'][0]
-            if element['status'] != 'OK':
-                raise ValueError(f"Itinéraire introuvable : {element['status']}")
-
-            distance_km = element['distance']['value'] / 1000  # mètres vers km
-            time_seconds = element['duration']['value']
+            route = routes[0]
+            distance_km = route['distanceMeters'] / 1000.0
+            time_seconds = int(route['duration'].rstrip('s'))  # "123s" → 123
 
             return distance_km, time_seconds
 
         except requests.RequestException as e:
-            raise Exception(f"Erreur API Google Maps : {e}")
+            raise Exception(f"Erreur API Google Routes : {e}")
         except (KeyError, IndexError) as e:
-            raise Exception(f"Réponse API Google Maps invalide : {e}")
+            raise Exception(f"Réponse API Google Routes invalide : {e}")
 
     def get_distance_and_time(
         self,
@@ -241,62 +260,96 @@ class RoutingService:
         locations: List[Tuple[float, float]]
     ) -> Tuple[List[List[float]], List[List[float]]]:
         """
-        Récupère la matrice via l'API Google Distance Matrix, en découpant
-        en blocs 2D (origines ET destinations) pour respecter les limites
-        strictes de Google : au plus 25 origines, 25 destinations, et 100
-        éléments (origines * destinations) par requête. On utilise des blocs
-        de 10x10 = 100 éléments, ce qui respecte toutes les limites quel que
-        soit n.
+        Récupère la matrice via l'API Google Routes (nouvelle),
+        en découpant en blocs pour respecter la limite de 625 éléments
+        (origines * destinations) par requête.
         """
         n = len(locations)
         UNREACHABLE_KM = 1.0e7
         distance_matrix = [[0.0] * n for _ in range(n)]
         time_matrix = [[0] * n for _ in range(n)]
 
-        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-        chunk_size = 10  # 10x10 = 100 éléments : sûr (<=25 par côté, <=100 total)
+        # Nouveau endpoint Routes API
+        url = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+        chunk_size = 25  # 25x25 = 625 éléments : limite max par requête
 
         for i_start in range(0, n, chunk_size):
             i_end = min(i_start + chunk_size, n)
-            origins_str = "|".join(
-                f"{lat},{lon}" for lat, lon in locations[i_start:i_end]
-            )
             for j_start in range(0, n, chunk_size):
                 j_end = min(j_start + chunk_size, n)
-                dests_str = "|".join(
-                    f"{lat},{lon}" for lat, lon in locations[j_start:j_end]
-                )
-                params = {
-                    'origins': origins_str,
-                    'destinations': dests_str,
-                    'key': self.google_api_key,
-                    'mode': 'driving',
+
+                # Nouveau format : listes d'objets avec waypoint
+                origins = [
+                    {"waypoint": {"location": {"latLng": {"latitude": lat, "longitude": lon}}}}
+                    for lat, lon in locations[i_start:i_end]
+                ]
+                destinations = [
+                    {"waypoint": {"location": {"latLng": {"latitude": lat, "longitude": lon}}}}
+                    for lat, lon in locations[j_start:j_end]
+                ]
+
+                payload = {
+                    "origins": origins,
+                    "destinations": destinations,
+                    "travelMode": "DRIVE",
+                    "routingPreference": "TRAFFIC_UNAWARE",
                 }
-                response = requests.get(url, params=params, timeout=30)
-                response.raise_for_status()
-                data = response.json()
 
-                if data.get('status') != 'OK':
-                    raise ValueError(f"Erreur Google Distance Matrix : {data.get('status')}")
+                # POST + headers (clé API + FieldMask obligatoire)
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": self.google_api_key,
+                    "X-Goog-FieldMask": "originIndex,destinationIndex,distanceMeters,duration,status"
+                }
 
-                rows = data.get('rows', [])
-                for oi, i_actual in enumerate(range(i_start, i_end)):
-                    # Garde-fou : si Google renvoie moins de lignes/éléments
-                    # qu'attendu, on traite les manquants comme injoignables
-                    # plutôt que de lever une IndexError.
-                    elements = rows[oi]['elements'] if oi < len(rows) else []
-                    for dj, j_actual in enumerate(range(j_start, j_end)):
-                        el = elements[dj] if dj < len(elements) else {}
-                        if el.get('status') != 'OK':
-                            distance_matrix[i_actual][j_actual] = (
-                                0.0 if i_actual == j_actual else UNREACHABLE_KM
-                            )
-                            time_matrix[i_actual][j_actual] = (
-                                0 if i_actual == j_actual else int(UNREACHABLE_KM)
-                            )
+                # Retry logic pour gérer les limites de taux (429)
+                max_retries = 3
+                retry_delay = 2  # secondes
+
+                for attempt in range(max_retries):
+                    try:
+                        response = requests.post(url, json=payload, headers=headers, timeout=30)
+                        response.raise_for_status()
+                        break  # Succès, sortir de la boucle de retry
+                    except requests.exceptions.HTTPError as e:
+                        if e.response.status_code == 429 and attempt < max_retries - 1:
+                            # Rate limit atteint, attendre avant de réessayer
+                            wait_time = retry_delay * (2 ** attempt)  # Backoff exponentiel
+                            print(f"[WARNING] Rate limit 429, attente de {wait_time}s avant retry {attempt + 1}/{max_retries}")
+                            time.sleep(wait_time)
                         else:
-                            distance_matrix[i_actual][j_actual] = el['distance']['value'] / 1000.0
-                            time_matrix[i_actual][j_actual] = int(el['duration']['value'])
+                            raise  # Re-lever l'erreur si ce n'est pas 429 ou si max retries atteint
+
+                # Nouveau format de réponse : liste plate d'éléments
+                data = response.json()
+                elements = data if isinstance(data, list) else data.get('elements', [])
+
+                for el in elements:
+                    oi = el.get('originIndex', 0)
+                    dj = el.get('destinationIndex', 0)
+                    i_actual = i_start + oi
+                    j_actual = j_start + dj
+
+                    # status est un objet {code: ...} dans la Routes API
+                    status_code = el.get('status', {}).get('code', 0)
+                    condition = el.get('condition', '')
+
+                    if condition == 'ROUTE_NOT_FOUND' or status_code != 0:
+                        distance_matrix[i_actual][j_actual] = (
+                            0.0 if i_actual == j_actual else UNREACHABLE_KM
+                        )
+                        time_matrix[i_actual][j_actual] = (
+                            0 if i_actual == j_actual else int(UNREACHABLE_KM)
+                        )
+                    else:
+                        # distanceMeters peut être absent pour les éléments diagonaux
+                        distance_matrix[i_actual][j_actual] = el.get('distanceMeters', 0) / 1000.0
+                        # duration est une string "123s" dans la Routes API
+                        duration_str = el.get('duration', '0s')
+                        time_matrix[i_actual][j_actual] = int(duration_str.rstrip('s'))
+
+                # Petit délai entre les chunks pour éviter de saturer le rate limit
+                time.sleep(0.5)
 
         for i in range(n):
             distance_matrix[i][i] = 0.0
