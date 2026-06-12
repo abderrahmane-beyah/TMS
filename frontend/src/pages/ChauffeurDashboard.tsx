@@ -70,9 +70,11 @@ export default function ChauffeurDashboard() {
                       const firstStop = sortedStops[0];
                       const lastStop = sortedStops[sortedStops.length - 1];
 
-                      // Premier arrêt et retour au dépôt (temps prévus par l'optimisation)
-                      // Fallback au dernier arrêt si heure_retour_depot n'est pas disponible (anciennes tournées)
-                      const startTime = firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null;
+                      // Départ du dépôt et retour au dépôt (temps prévus par l'optimisation)
+                      // Fallback au premier/dernier arrêt si heure_depart/heure_retour_depot non disponibles (anciennes tournées)
+                      const startTime = todayTournee.heure_depart
+                        ? formatTime(todayTournee.heure_depart)
+                        : (firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null);
                       const endTime = todayTournee.heure_retour_depot
                         ? formatTime(todayTournee.heure_retour_depot)
                         : (lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null);
@@ -196,9 +198,11 @@ export default function ChauffeurDashboard() {
                         const firstStop = sortedStops[0];
                         const lastStop = sortedStops[sortedStops.length - 1];
 
-                        // Premier arrêt et retour au dépôt (temps prévus par l'optimisation)
-                        // Fallback au dernier arrêt si heure_retour_depot n'est pas disponible (anciennes tournées)
-                        const startTime = firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null;
+                        // Départ du dépôt et retour au dépôt (temps prévus par l'optimisation)
+                        // Fallback au premier/dernier arrêt si heure_depart/heure_retour_depot non disponibles (anciennes tournées)
+                        const startTime = t.heure_depart
+                          ? formatTime(t.heure_depart)
+                          : (firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null);
                         const endTime = t.heure_retour_depot
                           ? formatTime(t.heure_retour_depot)
                           : (lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null);
