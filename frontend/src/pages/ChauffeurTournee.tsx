@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { confirmerLivraison, signalerProbleme, demarrerTournee, terminerTournee } from '../api/tournees';
-import type { Stop } from '../api/tournees';
 import StatusBadge from '../components/StatusBadge';
 import MapView from '../components/MapView';
 import LoadingSkeleton from '../components/LoadingSkeleton';
