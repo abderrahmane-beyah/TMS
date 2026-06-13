@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMaTournee, confirmerLivraison, signalerProbleme, demarrerTournee, terminerTournee } from '../api/tournees';
+import { confirmerLivraison, signalerProbleme, demarrerTournee, terminerTournee } from '../api/tournees';
 import type { Stop } from '../api/tournees';
 import StatusBadge from '../components/StatusBadge';
 import MapView from '../components/MapView';
@@ -10,45 +10,40 @@ import { formatTime, formatKm } from '../utils/formatters';
 import type { MapMarker, MapRoute } from '../components/MapView';
 import toast from 'react-hot-toast';
 
-function buildGoogleMapsUrl(stops: Stop[], depotLat?: number, depotLon?: number): string {
-  // Exclure les commandes annulées (ANNULEE) de l'itinéraire
-  const activeStops = stops.filter(s => s.commande_statut !== 'ANNULEE');
-  const sorted = [...activeStops].sort((a, b) => a.ordre - b.ordre);
-  if (sorted.length === 0) return '';
-  if (!depotLat || !depotLon) return ''; // Coordonnées du dépôt nécessaires
-
-  // Démarrer depuis le dépôt
-  const origin = `${depotLat},${depotLon}`;
-  const destination = `${sorted[sorted.length - 1].lat},${sorted[sorted.length - 1].lon}`;
-
-  // Tous les arrêts sauf le dernier sont des points de passage
-  const waypoints = sorted
-    .slice(0, -1)
-    .map((s) => `${s.lat},${s.lon}`)
-    .join('|');
-
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
-  if (waypoints) url += `&waypoints=${waypoints}`;
-  return url;
-}
-
 export default function ChauffeurTournee() {
   const queryClient = useQueryClient();
   const [problemeStopId, setProblemeStopId] = useState<number | null>(null);
   const [problemeText, setProblemeText] = useState('');
   const [showTourneeProbleme, setShowTourneeProbleme] = useState(false);
   const [tourneeProblemeText, setTourneeProblemeText] = useState('');
+  const [selectedTourneeId, setSelectedTourneeId] = useState<number | null>(null);
 
-  const { data: tournee, isLoading } = useQuery({
-    queryKey: ['ma-tournee'],
-    queryFn: getMaTournee,
+  const { data: allTournees, isLoading } = useQuery({
+    queryKey: ['tournees'],
+    queryFn: async () => {
+      const { getTournees } = await import('../api/tournees');
+      return getTournees();
+    },
   });
+
+  // Filter today's tournees
+  const today = new Date().toISOString().split('T')[0];
+  const todayTournees = allTournees?.filter(t => t.date === today) || [];
+
+  // Auto-select first EN_COURS or PLANIFIEE tournee, or use selected
+  const tournee = todayTournees.length > 0
+    ? (selectedTourneeId
+        ? todayTournees.find(t => t.id === selectedTourneeId)
+        : todayTournees.find(t => t.statut === 'EN_COURS')
+          || todayTournees.find(t => t.statut === 'PLANIFIEE')
+          || todayTournees[0])
+    : undefined;
 
   const confirmMutation = useMutation({
     mutationFn: ({ stopId }: { stopId: number }) =>
       confirmerLivraison(tournee!.id, stopId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ma-tournee'] });
+      queryClient.invalidateQueries({ queryKey: ['tournees'] });
       toast.success('Livraison confirmée');
     },
     onError: () => toast.error('Erreur lors de la confirmation'),
@@ -58,7 +53,7 @@ export default function ChauffeurTournee() {
     mutationFn: ({ stopId, description }: { stopId: number; description: string }) =>
       signalerProbleme(tournee!.id, stopId, description),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ma-tournee'] });
+      queryClient.invalidateQueries({ queryKey: ['tournees'] });
       setProblemeStopId(null);
       setProblemeText('');
       toast.success('Problème signalé');
@@ -70,7 +65,7 @@ export default function ChauffeurTournee() {
     mutationFn: ({ description }: { description: string }) =>
       signalerProbleme(tournee!.id, null, description), // stopId null = anomalie au niveau tournée
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ma-tournee'] });
+      queryClient.invalidateQueries({ queryKey: ['tournees'] });
       setShowTourneeProbleme(false);
       setTourneeProblemeText('');
       toast.success('Anomalie signalée');
@@ -81,7 +76,7 @@ export default function ChauffeurTournee() {
   const demarrerMutation = useMutation({
     mutationFn: () => demarrerTournee(tournee!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ma-tournee'] });
+      queryClient.invalidateQueries({ queryKey: ['tournees'] });
       toast.success('Tournée démarrée');
     },
     onError: () => toast.error('Erreur lors du démarrage'),
@@ -90,7 +85,7 @@ export default function ChauffeurTournee() {
   const terminerMutation = useMutation({
     mutationFn: () => terminerTournee(tournee!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ma-tournee'] });
+      queryClient.invalidateQueries({ queryKey: ['tournees'] });
       toast.success('Tournée terminée');
     },
     onError: () => toast.error('Erreur lors de la terminaison'),
@@ -150,7 +145,6 @@ export default function ChauffeurTournee() {
     ? [{ points: routePoints, color: '#3b82f6' }]
     : [];
 
-  const googleMapsUrl = buildGoogleMapsUrl(tournee.stops ?? [], depotLat, depotLon);
   const deliveredCount = sortedStops.filter((s) => s.statut === 'LIVREE').length;
   const allActiveStopsDelivered = sortedStops.length > 0 && deliveredCount === sortedStops.length;
 
@@ -163,6 +157,26 @@ export default function ChauffeurTournee() {
           Véhicule #{tournee.vehicule_id} — {tournee.distance_totale ? formatKm(tournee.distance_totale) : 'Distance à calculer'}
         </p>
       </div>
+
+      {/* Sélecteur de tournée (si plusieurs tournées aujourd'hui) */}
+      {todayTournees.length > 1 && (
+        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            Vous avez {todayTournees.length} tournées aujourd'hui - Sélectionnez :
+          </label>
+          <select
+            value={tournee?.id || ''}
+            onChange={(e) => setSelectedTourneeId(Number(e.target.value))}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {todayTournees.map((t) => (
+              <option key={t.id} value={t.id}>
+                Tournée #{t.id} - {t.stops?.length || 0} arrêts - {t.statut}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Cartes récapitulatives */}
       <div className="mb-5 grid grid-cols-3 gap-3">
@@ -233,21 +247,6 @@ export default function ChauffeurTournee() {
       <div className="mb-5 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
         <MapView markers={markers} routes={routes} className="h-56 sm:h-72" />
       </div>
-
-      {/* Bouton Google Maps */}
-      {sortedStops.length > 0 && (
-        <a
-          href={googleMapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm active:bg-blue-700"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z" />
-          </svg>
-          Ouvrir dans Google Maps
-        </a>
-      )}
 
       {/* Signaler un problème au niveau tournée */}
       {!showTourneeProbleme ? (
@@ -338,23 +337,38 @@ export default function ChauffeurTournee() {
                   </div>
 
                   {/* Boutons d'action */}
-                  {stop.statut !== 'LIVREE' && (
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => confirmMutation.mutate({ stopId: stop.id })}
-                        disabled={confirmMutation.isPending}
-                        className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white active:bg-green-700 disabled:opacity-60"
-                      >
-                        {confirmMutation.isPending ? '...' : 'Confirmer la livraison'}
-                      </button>
-                      <button
-                        onClick={() => setProblemeStopId(problemeStopId === stop.id ? null : stop.id)}
-                        className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 active:bg-red-100"
-                      >
-                        Signaler
-                      </button>
-                    </div>
-                  )}
+                  <div className="mt-3 flex gap-2">
+                    {/* Bouton Google Maps pour cet arrêt */}
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lon}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 active:bg-blue-100"
+                      title="Ouvrir dans Google Maps"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z" />
+                      </svg>
+                    </a>
+
+                    {stop.statut !== 'LIVREE' && (
+                      <>
+                        <button
+                          onClick={() => confirmMutation.mutate({ stopId: stop.id })}
+                          disabled={confirmMutation.isPending}
+                          className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white active:bg-green-700 disabled:opacity-60"
+                        >
+                          {confirmMutation.isPending ? '...' : 'Confirmer la livraison'}
+                        </button>
+                        <button
+                          onClick={() => setProblemeStopId(problemeStopId === stop.id ? null : stop.id)}
+                          className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 active:bg-red-100"
+                        >
+                          Signaler
+                        </button>
+                      </>
+                    )}
+                  </div>
 
                   {/* Indicateur de livraison confirmée */}
                   {stop.statut === 'LIVREE' && (
