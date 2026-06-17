@@ -108,18 +108,73 @@ def _run_multi_trip_optimization(
     else:
         median_ready = (ready_times[n // 2 - 1] + ready_times[n // 2]) / 2
     median_cutoff = median_ready + 3600  # médiane + 1h
-    # Véhicules disponibles pour un second trajet : prêts avec assez de
-    # journée restante pour un trajet utile (au moins ~1h avant la
-    # fermeture du dépôt).
+
+    # NOUVELLE LOGIQUE: Permettre le changement de véhicule en phase 2
+    # Les chauffeurs peuvent conduire des véhicules différents entre les trajets.
+    # Au lieu de réutiliser uniquement les véhicules de la phase 1, on sélectionne
+    # parmi TOUS les véhicules disponibles (limité au nombre de chauffeurs).
+
+    # Nombre de chauffeurs disponibles = nombre de véhicules pouvant faire phase 2
+    num_drivers_for_phase2 = len(routes_with_return)
+
+    # Analyser les types requis par les commandes non servies
+    from collections import Counter
+    unserved_type_counts = Counter()
+    for unserved_info in unserved:
+        commande_id = unserved_info['commande_id']
+        commande = next((c for c in commandes_data if c['id'] == commande_id), None)
+        if commande:
+            required_type = commande.get('type_vehicule_requis')
+            if required_type:
+                unserved_type_counts[required_type] += 1
+            else:
+                unserved_type_counts['NORMAL'] += 1
+
+    print(f"[INFO] Commandes non servies par type: {dict(unserved_type_counts)}")
+
+    # Grouper TOUS les véhicules par type (pas seulement ceux de phase 1)
+    vehicles_by_type = {}
+    for v in vehicules_data:
+        vtype = v.get('type_vehicule', 'NORMAL')
+        if vtype not in vehicles_by_type:
+            vehicles_by_type[vtype] = []
+        vehicles_by_type[vtype].append(v)
+
+    # Sélectionner les véhicules pour phase 2 en priorisant les types requis
     available_for_second_trip = []
-    for vehicule_id, _ in routes_with_return:
-        # Éligible seulement si : (a) assez de journée restante (>= 1h avant
-        # fermeture) ET (b) pas trop en retard sur le groupe (<= médiane + 1h).
-        # Exclu si l'une des deux conditions échoue (OU logique pour l'exclusion).
-        if (vehicle_ready[vehicule_id] < depot_close_seconds - 3600
-                and vehicle_ready[vehicule_id] <= median_cutoff):
-            vehicule = next(v for v in vehicules_data if v['id'] == vehicule_id)
-            available_for_second_trip.append(vehicule)
+
+    # Étape 1: Prioriser les véhicules qui matchent les types requis
+    for vtype, count in unserved_type_counts.most_common():
+        if vtype in vehicles_by_type and len(available_for_second_trip) < num_drivers_for_phase2:
+            # Prendre le plus grand véhicule de ce type
+            sorted_type = sorted(
+                vehicles_by_type[vtype],
+                key=lambda v: (v.get('capacite_poids', 0) + v.get('capacite_volume', 0) * 100),
+                reverse=True
+            )
+            for v in sorted_type:
+                if v not in available_for_second_trip and len(available_for_second_trip) < num_drivers_for_phase2:
+                    available_for_second_trip.append(v)
+                    print(f"[INFO] Phase 2: Sélectionné véhicule {v['id']} (type {vtype}) pour {count} commandes non servies")
+                    break
+
+    # Étape 2: Compléter avec d'autres véhicules si nécessaire
+    if len(available_for_second_trip) < num_drivers_for_phase2:
+        remaining = [v for v in vehicules_data if v not in available_for_second_trip]
+        remaining_sorted = sorted(
+            remaining,
+            key=lambda v: (v.get('capacite_poids', 0) + v.get('capacite_volume', 0) * 100),
+            reverse=True
+        )
+        needed = num_drivers_for_phase2 - len(available_for_second_trip)
+        available_for_second_trip.extend(remaining_sorted[:needed])
+
+    # Simuler vehicle_ready pour les nouveaux véhicules (peuvent partir immédiatement)
+    # Les véhicules déjà utilisés gardent leur heure de retour réelle
+    for v in available_for_second_trip:
+        if v['id'] not in vehicle_ready:
+            # Nouveau véhicule: peut partir dès le début de la journée + reload time
+            vehicle_ready[v['id']] = depot_open_seconds + reload_seconds
 
     if not available_for_second_trip:
         print(f"[INFO] Aucun véhicule disponible pour un second trajet "
@@ -374,19 +429,61 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             # (un chauffeur ne peut conduire qu'un véhicule à la fois)
             max_vehicles = min(len(vehicules), len(available_chauffeurs))
 
-            # Trier les véhicules par capacité (décroissante) pour sélectionner d'abord les plus grands
-            # Cela maximise la capacité totale disponible pour l'optimisation
-            vehicules_sorted = sorted(
-                vehicules,
-                key=lambda v: (v.capacite_poids + v.capacite_volume * 100),  # Métrique de capacité combinée
-                reverse=True  # Les plus grands en premier
-            )
-            vehicules_to_use = vehicules_sorted[:max_vehicles]
+            # NOUVELLE LOGIQUE: Sélection intelligente basée sur les types de commandes
+            # Compter les commandes par type de véhicule requis
+            from collections import Counter
+            type_counts = Counter()
+            for c in commandes_data:
+                required_type = c.get('type_vehicule_requis')
+                if required_type:
+                    type_counts[required_type] += 1
+                else:
+                    type_counts['NORMAL'] += 1  # Commandes sans type spécifique → NORMAL
+
+            print(f"[INFO] Distribution des commandes par type: {dict(type_counts)}")
+
+            # Grouper les véhicules par type
+            vehicles_by_type = {}
+            for v in vehicules:
+                # Gérer enum ou chaîne pour type_vehicule
+                vtype = getattr(v.type_vehicule, 'value', v.type_vehicule) if v.type_vehicule else 'NORMAL'
+                if vtype not in vehicles_by_type:
+                    vehicles_by_type[vtype] = []
+                vehicles_by_type[vtype].append(v)
+
+            # Sélectionner les véhicules en priorisant les types requis
+            vehicules_to_use = []
+
+            # Étape 1: Sélectionner au moins 1 véhicule de chaque type requis
+            for vtype, count in type_counts.most_common():
+                if vtype in vehicles_by_type and len(vehicules_to_use) < max_vehicles:
+                    # Trier par capacité et prendre le plus grand de ce type
+                    sorted_type = sorted(
+                        vehicles_by_type[vtype],
+                        key=lambda v: (v.capacite_poids + v.capacite_volume * 100),
+                        reverse=True
+                    )
+                    if sorted_type and sorted_type[0] not in vehicules_to_use:
+                        vehicules_to_use.append(sorted_type[0])
+                        print(f"[INFO] Sélectionné véhicule {sorted_type[0].id} (type {vtype}) pour {count} commandes")
+
+            # Étape 2: Compléter avec les véhicules de plus grande capacité restants
+            if len(vehicules_to_use) < max_vehicles:
+                remaining = [v for v in vehicules if v not in vehicules_to_use]
+                remaining_sorted = sorted(
+                    remaining,
+                    key=lambda v: (v.capacite_poids + v.capacite_volume * 100),
+                    reverse=True
+                )
+                needed = max_vehicles - len(vehicules_to_use)
+                vehicules_to_use.extend(remaining_sorted[:needed])
 
             if len(vehicules) > len(available_chauffeurs):
                 selected_ids = [v.id for v in vehicules_to_use]
+                selected_types = [getattr(v.type_vehicule, 'value', v.type_vehicule) if v.type_vehicule else 'NORMAL'
+                                 for v in vehicules_to_use]
                 print(f"Avertissement: {len(vehicules)} véhicules mais seulement {len(available_chauffeurs)} chauffeurs disponibles.")
-                print(f"   Sélectionné {max_vehicles} véhicules avec la plus grande capacité: {selected_ids}")
+                print(f"   Sélectionné {max_vehicles} véhicules (types: {selected_types}): {selected_ids}")
 
             # Conversion en dictionnaires pour le solveur.
             # NB : selon la version de SQLAlchemy, une colonne SAEnum peut
