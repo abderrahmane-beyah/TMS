@@ -433,8 +433,9 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             # Compter les commandes par type de véhicule requis
             from collections import Counter
             type_counts = Counter()
-            for c in commandes_data:
-                required_type = c.get('type_vehicule_requis')
+            for c in commandes:
+                # Gérer enum ou chaîne pour type_vehicule_requis
+                required_type = getattr(c.type_vehicule_requis, 'value', c.type_vehicule_requis) if c.type_vehicule_requis else None
                 if required_type:
                     type_counts[required_type] += 1
                 else:
