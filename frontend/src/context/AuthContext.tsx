@@ -14,7 +14,6 @@ interface AuthContextType extends AuthState {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-// Normalise les rôles du backend (MAJUSCULES) vers le frontend (Casse Titre)
 const normalizeRole = (role: string | undefined | null): string => {
   if (!role) {
     console.error('normalizeRole: role is undefined or null');

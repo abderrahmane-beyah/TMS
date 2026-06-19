@@ -89,10 +89,13 @@ def _run_multi_trip_optimization(
 
     SERVICE_TIME = 600  # 10 min de service ; doit correspondre à la fonction de rappel de temps du solveur
 
-    # Calculer pour chaque véhicule son heure de DISPONIBILITÉ = retour +
-    # delta. C'est le plus tôt où il peut réellement repartir (second
-    # trajet), une fois rechargé.
-    vehicle_ready = {}  # vehicule_id -> ready_seconds
+    # Calculer pour chaque CHAUFFEUR son heure de DISPONIBILITÉ = retour +
+    # delta. C'est le plus tôt où il peut réellement repartir (second trajet),
+    # une fois revenu et après rechargement. Note : on utilise temporairement
+    # vehicle_ready comme dict (par commodité avec le code existant), mais il
+    # représente en réalité les heures de retour des CHAUFFEURS qui ont conduit
+    # ces véhicules en Phase 1.
+    vehicle_ready = {}  # vehicule_id de Phase 1 -> ready_seconds du chauffeur
     for vehicule_id, return_time in routes_with_return:
         ret_hour, ret_min, _ = map(int, return_time.split(':'))
         ret_seconds = ret_hour * 3600 + ret_min * 60
@@ -169,24 +172,17 @@ def _run_multi_trip_optimization(
         needed = num_drivers_for_phase2 - len(available_for_second_trip)
         available_for_second_trip.extend(remaining_sorted[:needed])
 
-    # Simuler vehicle_ready pour les nouveaux véhicules (peuvent partir immédiatement)
-    # Les véhicules déjà utilisés gardent leur heure de retour réelle
-    for v in available_for_second_trip:
-        if v['id'] not in vehicle_ready:
-            # Nouveau véhicule: peut partir dès le début de la journée + reload time
-            vehicle_ready[v['id']] = depot_open_seconds + reload_seconds
-
     if not available_for_second_trip:
         print(f"[INFO] Aucun véhicule disponible pour un second trajet "
               f"(tous prêts trop tard après {reload_seconds // 60} min de chargement)")
         return solution_phase1
 
-    # Le plus tôt où un camion disponible peut partir (sert au filtre
-    # d'atteignabilité : une commande est candidate si AU MOINS UN camion
-    # disponible peut l'atteindre à temps).
-    earliest_ready_seconds = min(
-        vehicle_ready[v['id']] for v in available_for_second_trip
-    )
+    # Le plus tôt où un CHAUFFEUR est disponible pour repartir (sert au filtre
+    # d'atteignabilité : une commande est candidate si AU MOINS UN chauffeur
+    # peut l'atteindre à temps). On utilise les heures de retour des chauffeurs
+    # de Phase 1, car ce sont EUX qui doivent revenir, pas les véhicules.
+    driver_ready_times = list(vehicle_ready.values())  # Heures de retour des chauffeurs de Phase 1
+    earliest_ready_seconds = min(driver_ready_times)
     print(f"[INFO] Départ du second trajet au plus tôt (chargement inclus): "
           f"{earliest_ready_seconds // 3600:02d}:"
           f"{(earliest_ready_seconds % 3600) // 60:02d}")
@@ -233,15 +229,40 @@ def _run_multi_trip_optimization(
     print(f"[INFO] Phase 2: {len(feasible_unserved)} commandes atteignables sur un second trajet")
     print(f"[INFO] Phase 2: {len(available_for_second_trip)} véhicules utilisés pour le second trajet")
 
-    # Construire les planchers de départ par véhicule dans le MÊME ordre que
-    # les véhicules passés au solveur, pour que chaque camion soit contraint
-    # par sa propre heure de disponibilité (retour + delta).
-    departure_floors = [vehicle_ready[v['id']] for v in available_for_second_trip]
+    # Construire les planchers de départ par CHAUFFEUR dans le MÊME ordre que
+    # les véhicules passés au solveur. Chaque chauffeur est contraint par son
+    # propre temps de retour de Phase 1 (retour + delta), INDÉPENDAMMENT du
+    # véhicule qu'il conduit en Phase 2. Si le chauffeur i a utilisé le
+    # véhicule A en Phase 1 et le véhicule B en Phase 2, c'est l'heure de
+    # retour du chauffeur (depuis A) qui compte, pas la disponibilité de B.
+    departure_floors = []
+    # NOUVEAU : Traquer quel véhicule de Phase 1 correspond à quel véhicule de Phase 2
+    phase2_to_phase1_veh = {}
 
-    # Lancer la seconde optimisation. CRITIQUE : chaque camion ne peut pas
-    # partir avant son propre (retour + delta). Passer des planchers par
-    # véhicule garde le plan exécutable (aucun camion ne "part" avant d'être
-    # revenu et rechargé) et les heures d'arrivée rapportées honnêtes.
+    for i, (phase1_vehicle_id, return_time) in enumerate(routes_with_return):
+        if i >= len(available_for_second_trip):
+            break
+        # Utiliser l'heure de retour du chauffeur depuis Phase 1
+        ret_hour, ret_min, _ = map(int, return_time.split(':'))
+        ret_seconds = ret_hour * 3600 + ret_min * 60
+        driver_ready = ret_seconds + reload_seconds
+        departure_floors.append(driver_ready)
+
+        phase2_vehicle = available_for_second_trip[i]
+
+        # NOUVEAU : On enregistre que le camion de Phase 2 est conduit par le chauffeur du camion de Phase 1
+        phase2_to_phase1_veh[phase2_vehicle['id']] = phase1_vehicle_id
+
+        if phase2_vehicle['id'] == phase1_vehicle_id:
+            print(f"[INFO] Chauffeur {i}: réutilise véhicule {phase1_vehicle_id}, départ à {driver_ready//3600:02d}:{(driver_ready%3600)//60:02d}")
+        else:
+            print(f"[INFO] Chauffeur {i}: change de véhicule {phase1_vehicle_id} → {phase2_vehicle['id']}, départ à {driver_ready//3600:02d}:{(driver_ready%3600)//60:02d}")
+
+    # Lancer la seconde optimisation. CRITIQUE : chaque CHAUFFEUR ne peut pas
+    # repartir avant son propre retour de Phase 1 + delta. Passer des planchers
+    # par chauffeur garde le plan exécutable : aucun chauffeur ne repart avant
+    # d'être revenu au dépôt, d'avoir rechargé, et d'avoir éventuellement changé
+    # de véhicule. Les heures d'arrivée rapportées restent honnêtes.
     solver_phase2 = ORToolsVRPTWSolver(
         feasible_unserved,
         available_for_second_trip,
@@ -291,7 +312,8 @@ def _run_multi_trip_optimization(
         'nb_vehicules_utilises': combined_vehicles,
         'nb_commandes_non_servies': len(combined_unserved),
         'commandes_non_servies': combined_unserved,
-        'algorithme': 'OR_TOOLS_MULTI_TRIP'
+        'algorithme': 'OR_TOOLS_MULTI_TRIP',
+        'phase2_to_phase1_veh': phase2_to_phase1_veh  # NOUVEAU : transmettre le mapping
     }
 
     print(f"[INFO] Multi-trajets terminé: {len(combined_tournees)} itinéraires au total, "
@@ -599,22 +621,31 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             db.commit()
 
             # Créer les tournées dans la base de données (date_execution déjà analysée plus tôt).
-            # Un véhicule peut maintenant avoir DEUX tournées (premier + deuxième trajet). Le
-            # même chauffeur physique doit gérer les deux trajets d'un véhicule donné,
-            # donc on assigne les chauffeurs par VÉHICULE (rotation circulaire sur les véhicules),
-            # pas par tournée -- sinon le trajet 1 et le trajet 2 d'un camion
-            # seraient donnés à des chauffeurs différents, ce qui est impossible.
-            vehicule_to_chauffeur = {}
+            # Un CHAUFFEUR peut maintenant avoir DEUX tournées (premier + deuxième trajet) avec
+            # des VÉHICULES DIFFÉRENTS. Le même chauffeur physique doit gérer les deux trajets,
+            # donc on assigne les chauffeurs par "SLOT LOGIQUE DE CHAUFFEUR" (identifié par le
+            # véhicule de Phase 1), pas par véhicule physique actuel -- sinon un chauffeur qui
+            # change de camion entre Phase 1 et Phase 2 serait compté comme deux chauffeurs différents.
+            vehicule_to_chauffeur = {}  # Ce dict va lier un "Slot de Chauffeur (Phase 1)" à un Utilisateur
             next_chauffeur_index = 0
 
+            # Récupérer le mapping depuis la solution
+            phase2_mapping = solution.get('phase2_to_phase1_veh', {})
+
             for tournee_data in solution['tournees']:
-                veh_id = tournee_data['vehicule_id']
-                if veh_id not in vehicule_to_chauffeur:
-                    vehicule_to_chauffeur[veh_id] = available_chauffeurs[
+                actual_veh_id = tournee_data['vehicule_id']
+
+                # Si c'est un camion de Phase 2, on récupère l'ID du camion de Phase 1 qui lui est lié
+                # (pour retrouver le MÊME chauffeur). Sinon, on garde l'ID actuel.
+                logical_driver_slot = phase2_mapping.get(actual_veh_id, actual_veh_id)
+
+                if logical_driver_slot not in vehicule_to_chauffeur:
+                    vehicule_to_chauffeur[logical_driver_slot] = available_chauffeurs[
                         next_chauffeur_index % len(available_chauffeurs)
                     ]
                     next_chauffeur_index += 1
-                assigned_chauffeur = vehicule_to_chauffeur[veh_id]
+
+                assigned_chauffeur = vehicule_to_chauffeur[logical_driver_slot]
 
                 # Analyser l'heure de départ prévue si disponible
                 heure_depart_prevue = None
