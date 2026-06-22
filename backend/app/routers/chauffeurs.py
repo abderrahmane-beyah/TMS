@@ -35,6 +35,7 @@ async def create_chauffeur(
         email=payload.email,
         mot_de_passe=hash_password(payload.mot_de_passe),
         telephone=payload.telephone,
+        warehouse_id=payload.warehouse_id,
         role=RoleEnum.CHAUFFEUR,
         statut=payload.statut,
         actif=True

@@ -82,7 +82,7 @@ class RoutingService:
             "origin": {"location": {"latLng": {"latitude": lat1, "longitude": lon1}}},
             "destination": {"location": {"latLng": {"latitude": lat2, "longitude": lon2}}},
             "travelMode": "DRIVE",
-            "routingPreference": "TRAFFIC_UNAWARE",
+            "routingPreference": "TRAFFIC_AWARE"
         }
         headers = {
             "Content-Type": "application/json",
@@ -348,8 +348,9 @@ class RoutingService:
                         duration_str = el.get('duration', '0s')
                         time_matrix[i_actual][j_actual] = int(duration_str.rstrip('s'))
 
-                # Petit délai entre les chunks pour éviter de saturer le rate limit
-                time.sleep(0.5)
+                # Délai entre les chunks pour éviter de saturer le rate limit Google
+                # Pour 100+ commandes, augmenter à 2s minimum
+                time.sleep(2.0)
 
         for i in range(n):
             distance_matrix[i][i] = 0.0
