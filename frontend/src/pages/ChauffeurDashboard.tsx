@@ -70,14 +70,20 @@ export default function ChauffeurDashboard() {
                       const firstStop = sortedStops[0];
                       const lastStop = sortedStops[sortedStops.length - 1];
 
-                      // Départ du dépôt et retour au dépôt (temps prévus par l'optimisation)
-                      // Fallback au premier/dernier arrêt si heure_depart/heure_retour_depot non disponibles (anciennes tournées)
+                      // Pour les tournées terminées, afficher l'heure réelle de fin
+                      // Pour les autres, afficher les heures prévues
+                      const isCompleted = todayTournee.statut === 'TERMINEE';
+                      const actualEndTime = lastStop.heure_arrivee_reelle ? formatTime(lastStop.heure_arrivee_reelle) : null;
+
                       const startTime = todayTournee.heure_depart
                         ? formatTime(todayTournee.heure_depart)
                         : (firstStop.heure_arrivee_prevue ? formatTime(firstStop.heure_arrivee_prevue) : null);
-                      const endTime = todayTournee.heure_retour_depot
+                      const plannedEndTime = todayTournee.heure_retour_depot
                         ? formatTime(todayTournee.heure_retour_depot)
                         : (lastStop.heure_arrivee_prevue ? formatTime(lastStop.heure_arrivee_prevue) : null);
+
+                      // Afficher heure réelle si terminée, sinon heure prévue
+                      const endTime = isCompleted && actualEndTime ? actualEndTime : plannedEndTime;
 
                       return startTime && endTime ? (
                         <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-white px-3 py-2">
@@ -86,6 +92,9 @@ export default function ChauffeurDashboard() {
                           </svg>
                           <span className="text-sm font-semibold text-blue-900">
                             {startTime} - {endTime}
+                            {isCompleted && actualEndTime && plannedEndTime !== actualEndTime && (
+                              <span className="ml-1 text-xs text-gray-500">(prévu: {plannedEndTime})</span>
+                            )}
                           </span>
                         </div>
                       ) : null;
