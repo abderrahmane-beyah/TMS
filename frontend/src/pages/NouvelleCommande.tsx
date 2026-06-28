@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createCommande } from '../api/commandes';
 import { getWarehouses } from '../api/warehouses';
-import { useHybridGeocoding as useGeocoding } from '../hooks/useHybridGeocoding';
+import { useGoogleGeocoding as useGeocoding } from '../hooks/useGoogleGeocoding';
 import toast from 'react-hot-toast';
 
 interface FieldErrors {
