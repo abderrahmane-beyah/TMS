@@ -26,7 +26,8 @@ def _run_multi_trip_optimization(
     depot_lon: float,
     time_limit: int,
     date_str: str,
-    db
+    db,
+    all_vehicules_data: list = None,
 ) -> dict:
     """
     Optimisation multi-trajets : premier trajet avec tous les véhicules, puis second trajet
@@ -136,8 +137,9 @@ def _run_multi_trip_optimization(
     print(f"[INFO] Commandes non servies par type: {dict(unserved_type_counts)}")
 
     # Grouper TOUS les véhicules par type (pas seulement ceux de phase 1)
+    all_vehs = all_vehicules_data if all_vehicules_data else vehicules_data
     vehicles_by_type = {}
-    for v in vehicules_data:
+    for v in all_vehs:
         vtype = v.get('type_vehicule', 'NORMAL')
         if vtype not in vehicles_by_type:
             vehicles_by_type[vtype] = []
@@ -163,7 +165,7 @@ def _run_multi_trip_optimization(
 
     # Étape 2: Compléter avec d'autres véhicules si nécessaire
     if len(available_for_second_trip) < num_drivers_for_phase2:
-        remaining = [v for v in vehicules_data if v not in available_for_second_trip]
+        remaining = [v for v in all_vehs if v not in available_for_second_trip]
         remaining_sorted = sorted(
             remaining,
             key=lambda v: (v.get('capacite_poids', 0) + v.get('capacite_volume', 0) * 100),
@@ -239,6 +241,28 @@ def _run_multi_trip_optimization(
     # NOUVEAU : Traquer quel véhicule de Phase 1 correspond à quel véhicule de Phase 2
     phase2_to_phase1_veh = {}
 
+    # Réordonner available_for_second_trip pour que chaque chauffeur garde
+    # son véhicule de Phase 1 quand c'est possible (éviter les échanges inutiles).
+    phase1_veh_ids = [vid for vid, _ in routes_with_return]
+    ordered_phase2 = [None] * len(phase1_veh_ids)
+    remaining_phase2 = list(available_for_second_trip)
+
+    # Étape 1 : affecter en priorité le même véhicule au même chauffeur
+    for i, p1_id in enumerate(phase1_veh_ids):
+        for v in remaining_phase2:
+            if v['id'] == p1_id:
+                ordered_phase2[i] = v
+                remaining_phase2.remove(v)
+                break
+
+    # Étape 2 : remplir les slots restants avec les véhicules non affectés
+    for i in range(len(ordered_phase2)):
+        if ordered_phase2[i] is None and remaining_phase2:
+            ordered_phase2[i] = remaining_phase2.pop(0)
+
+    # Retirer les slots vides (si plus de Phase 1 routes que de Phase 2 véhicules)
+    available_for_second_trip = [v for v in ordered_phase2 if v is not None]
+
     for i, (phase1_vehicle_id, return_time) in enumerate(routes_with_return):
         if i >= len(available_for_second_trip):
             break
@@ -286,6 +310,10 @@ def _run_multi_trip_optimization(
     # ========== Combiner les deux solutions ==========
     print(f"[INFO] Phase 2: {len(solution_phase2['tournees'])} itinéraires supplémentaires")
 
+    for t in solution_phase1['tournees']:
+        t['phase'] = 1
+    for t in solution_phase2['tournees']:
+        t['phase'] = 2
     combined_tournees = solution_phase1['tournees'] + solution_phase2['tournees']
     combined_distance = solution_phase1['distance_totale'] + solution_phase2['distance_totale']
     combined_vehicles = len(set(r['vehicule_id'] for r in combined_tournees))
@@ -540,6 +568,15 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                 'type_vehicule': _enum_str(v.type_vehicule, 'NORMAL'),
             } for v in vehicules_to_use]  # véhicules limités
 
+            # TOUS les véhicules de l'entrepôt (pour que Phase 2 puisse changer de type)
+            all_vehicules_data = [{
+                'id': v.id,
+                'immatriculation': v.immatriculation,
+                'capacite_poids': v.capacite_poids,
+                'capacite_volume': v.capacite_volume,
+                'type_vehicule': _enum_str(v.type_vehicule, 'NORMAL'),
+            } for v in vehicules]
+
             tache.progression = 40
             db.commit()
 
@@ -573,7 +610,8 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
                 depot_lon,
                 time_limit,
                 date_str,
-                db
+                db,
+                all_vehicules_data=all_vehicules_data,
             )
 
             # Capturer l'état final et calculer l'usage des ressources
@@ -635,13 +673,20 @@ def run_optimisation(self, tache_id: int, warehouse_id: int, commande_ids: list,
             for tournee_data in solution['tournees']:
                 actual_veh_id = tournee_data['vehicule_id']
 
-                # Si c'est un camion de Phase 2, on récupère l'ID du camion de Phase 1 qui lui est lié
-                # (pour retrouver le MÊME chauffeur). Sinon, on garde l'ID actuel.
-                logical_driver_slot = phase2_mapping.get(actual_veh_id, actual_veh_id)
+                # UNIQUEMENT pour les tournées de Phase 2 : récupérer le slot
+                # du chauffeur qui a conduit en Phase 1 (il change de véhicule).
+                # Pour les tournées de Phase 1, le slot = le véhicule lui-même.
+                if tournee_data.get('phase') == 2:
+                    logical_driver_slot = phase2_mapping.get(actual_veh_id, actual_veh_id)
+                else:
+                    logical_driver_slot = actual_veh_id
 
                 if logical_driver_slot not in vehicule_to_chauffeur:
+                    if next_chauffeur_index >= len(available_chauffeurs):
+                        print(f"[WARN] Plus de chauffeurs disponibles pour le slot {logical_driver_slot}, skip")
+                        continue
                     vehicule_to_chauffeur[logical_driver_slot] = available_chauffeurs[
-                        next_chauffeur_index % len(available_chauffeurs)
+                        next_chauffeur_index
                     ]
                     next_chauffeur_index += 1
 
