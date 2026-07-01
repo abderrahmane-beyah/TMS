@@ -16,7 +16,7 @@ export default function ChauffeurDashboard() {
   const [anomalieText, setAnomalieText] = useState('');
 
   const { data: tournees, isLoading } = useQuery({
-    queryKey: ['tournees'],
+    queryKey: ['tournees', 'chauffeur'],  
     queryFn: getTournees,
   });
 

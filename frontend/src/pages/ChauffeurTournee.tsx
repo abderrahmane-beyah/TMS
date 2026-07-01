@@ -18,7 +18,7 @@ export default function ChauffeurTournee() {
   const [selectedTourneeId, setSelectedTourneeId] = useState<number | null>(null);
 
   const { data: allTournees, isLoading } = useQuery({
-    queryKey: ['tournees'],
+    queryKey: ['tournees', 'chauffeur'],  
     queryFn: async () => {
       const { getTournees } = await import('../api/tournees');
       return getTournees();
