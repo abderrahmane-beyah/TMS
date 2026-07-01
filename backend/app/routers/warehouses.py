@@ -13,12 +13,14 @@ router = APIRouter(prefix="/api/v1/warehouses", tags=["Warehouses"])
 
 @router.get("/", response_model=list[WarehouseResponse])
 async def list_warehouses(
+    include_inactive: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user)
 ):
-    result = await db.execute(
-        select(Warehouse).where(Warehouse.actif == True).order_by(Warehouse.ville, Warehouse.nom)
-    )
+    query = select(Warehouse)
+    if not include_inactive:
+        query = query.where(Warehouse.actif == True)
+    result = await db.execute(query.order_by(Warehouse.ville, Warehouse.nom))
     return result.scalars().all()
 
 

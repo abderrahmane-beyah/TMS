@@ -27,6 +27,16 @@ export const getWarehouses = async (): Promise<Warehouse[]> => {
   return response.data;
 };
 
+export const getAllWarehouses = async (): Promise<Warehouse[]> => {
+  const response = await client.get("/warehouses/", { params: { include_inactive: true } });
+  return response.data;
+};
+
+export const toggleWarehouseActif = async (id: number, actif: boolean): Promise<Warehouse> => {
+  const response = await client.patch(`/warehouses/${id}`, { actif });
+  return response.data;
+};
+
 export const createWarehouse = async (data: WarehouseCreate): Promise<Warehouse> => {
   const response = await client.post("/warehouses/", data);
   return response.data;
