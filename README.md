@@ -4,16 +4,15 @@
 [![Deployment](https://img.shields.io/badge/deployment-live-success)](http://116.203.75.64)
 [![Server](https://img.shields.io/badge/server-Hetzner-red)](https://www.hetzner.com)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
+
 ---
-connecter vous :
-email: admin@tms.com 
-password: admin123
 
-pour les chauffeurs les mots de passes sont : chauffeur123
-pour les expediteurs  : expediteur123
-pour les dispacheur  : dispacheur123
+Projet de fin d'études -- Licence Mathématiques ,Filière MI , Université de Nouakchott.
 
-et leurs emails son't dans page d'administration
+Application web de gestion du transport (TMS) intégrant un moteur d'optimisation pour le problème de tournées de véhicules avec fenêtres de temps (VRPTW). Le solveur utilise la métaheuristique Guided Local Search (OR-Tools) avec prise en charge des capacités multiples (poids/volume), types de véhicules (normal, réfrigéré, congélateur), multi-trajets avec changement de véhicule, et fenêtres de temps strictes.
+
+---
+
 ## Prérequis
 
 Avant de lancer l'application, assurez-vous d'avoir installé :
@@ -53,7 +52,6 @@ docker logs tms-prod-backend
 - Frontend : `http://localhost`
 - API : `http://localhost:8000/docs`
 
-> **Guide de déploiement :** Voir `DEPLOY_HETZNER.md` pour déployer sur un serveur VPS (~5€/mois)
 
 ---
 
@@ -174,16 +172,6 @@ npm run dev
 
 L'application est accessible sur : `http://localhost:5173`
 
----
-
-## Comptes de démonstration
-
-| Rôle | Email | Mot de passe |
-|------|-------|--------------|
-| Administrateur | admin@tms.com | admin123 |
-| Dispatcheur | omar.dispatcher@tms.com | dispatcher123 |
-| Chauffeur | med.ab.chauffeur1@tms.com | chauffeur123 |
-| Expéditeur | expediteur@tms.com | expediteur123 |
 
 ---
 
@@ -207,7 +195,7 @@ L'application est accessible sur : `http://localhost:5173`
 | Base de données | PostgreSQL 16 |
 | File de tâches | Celery + Redis |
 | Optimisation | OR-Tools (VRPTW) |
-| Routing | OSRM (Mauritania) ou google maps api key|
+| Routing | OSRM (Mauritanie, auto-hébergé) |
 | Frontend | React 19 + TypeScript + Vite |
 | Cartographie | Leaflet.js + OpenStreetMap |
 | Déploiement | Docker + Docker Compose |
@@ -219,3 +207,24 @@ L'application est accessible sur : `http://localhost:5173`
 - **Développement** : `backend/docker-compose.yml` (DB, Redis, OSRM uniquement)
 - **Production** : `docker-compose.prod.yml` (stack complète)
 - **Guides** : Voir `DEPLOY_HETZNER.md` et `DOCKER_DEPLOYMENT.md`
+
+---
+
+## Optimisation VRPTW
+
+Le moteur d'optimisation résout le VRPTW multi-contraint avec :
+
+- **Solveur** : OR-Tools avec métaheuristique Guided Local Search (GLS)
+- **Limites dynamiques** : 30s (< 20 cmd), 60s (20-50 cmd), 120s (> 50 cmd)
+- **Multi-trajets** : Algorithme en 2 phases avec changement de véhicule entre phases
+- **Contraintes** : Capacités (poids + volume), fenêtres de temps, types de véhicules
+- **Routage** : OSRM Table API (matrice N×N, latence < 1ms, coût $0)
+- **Performance** : 30s-4.5min selon taille, < 20 MB mémoire, taux de service > 85%
+
+---
+
+## Auteur
+
+**Abderrahmane Abdellahi Beyah** -- Licence en Mathématiques , Filière MI, Faculté des Sciences et Techniques, Université de Nouakchott (2025-2026)
+
+Encadrant : Dr. Ahmed Sejad
